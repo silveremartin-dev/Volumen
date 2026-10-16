@@ -25,9 +25,12 @@ fn test_differential_benchmark_invariant_and_psnr() {
     mesh.vertices.push(volumen_core::Point3D::new(5.0, 5.0, 10.0));
     mesh.vertices.push(volumen_core::Point3D::new(25.0, 5.0, 10.0));
     mesh.vertices.push(volumen_core::Point3D::new(5.0, 25.0, 10.0));
+    mesh.uvs.push(volumen_geom::UV::new(0.0, 0.0));
+    mesh.uvs.push(volumen_geom::UV::new(1.0, 0.0));
+    mesh.uvs.push(volumen_geom::UV::new(0.0, 1.0));
     mesh.faces.push(Face {
         v: [0, 1, 2],
-        uv: None,
+        uv: Some([0, 1, 2]),
     });
     NormalEstimator::compute_vertex_normals(&mut mesh);
 
@@ -39,17 +42,18 @@ fn test_differential_benchmark_invariant_and_psnr() {
         step_size: 1.0,
         width: 64,
         height: 64,
+        affine: None,
     };
 
     // 3. Render Run 1
     let start_1 = std::time::Instant::now();
-    SurfaceVolumeGenerator::render_to_dir(&vol, &mesh, &config, dir_run1.path())
+    SurfaceVolumeGenerator::render_mesh_to_dir(&vol, &mesh, &config, dir_run1.path())
         .expect("Run 1 should succeed");
     let elapsed_1 = start_1.elapsed();
 
     // 4. Render Run 2 (Simulated comparative reference)
     let start_2 = std::time::Instant::now();
-    SurfaceVolumeGenerator::render_to_dir(&vol, &mesh, &config, dir_run2.path())
+    SurfaceVolumeGenerator::render_mesh_to_dir(&vol, &mesh, &config, dir_run2.path())
         .expect("Run 2 should succeed");
     let elapsed_2 = start_2.elapsed();
 

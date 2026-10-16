@@ -47,18 +47,19 @@ fn test_reproducible_benchmark_across_random_datasets() {
             step_size: 1.0,
             width: 64,
             height: 64,
+            affine: None,
         };
 
         let t1 = std::time::Instant::now();
-        SurfaceVolumeGenerator::render_to_dir(&vol, &obj_mesh, &config, temp_dir_1.path())
+        SurfaceVolumeGenerator::render_mesh_to_dir(&vol, &obj_mesh, &config, temp_dir_1.path())
             .expect("Render Run 1 failed");
         let duration_1 = t1.elapsed();
 
-        // 5. Benchmark Render Run 2 (Determinism & Invariance check)
+        // 5. Benchmark Render Run 2 (tifxyz native lattice test)
         let temp_dir_2 = tempfile::tempdir().unwrap();
         let t2 = std::time::Instant::now();
-        SurfaceVolumeGenerator::render_to_dir(&vol, &obj_mesh, &config, temp_dir_2.path())
-            .expect("Render Run 2 failed");
+        SurfaceVolumeGenerator::render_tifxyz_to_dir(&vol, &tifxyz_mesh, &config, temp_dir_2.path())
+            .expect("Render Run 2 (tifxyz) failed");
         let duration_2 = t2.elapsed();
 
         // 6. Verify 100% Determinism between runs

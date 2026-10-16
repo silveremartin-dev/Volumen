@@ -44,7 +44,7 @@ fn test_end_to_end_surface_volume_pipeline() {
         height: 32,
     };
 
-    SurfaceVolumeGenerator::render_to_dir(&vol, &mesh, &config, dir.path())
+    SurfaceVolumeGenerator::render_mesh_to_dir(&vol, &mesh, &config, dir.path())
         .expect("Surface volume generation should succeed");
 
     // Verify generated TIFF slices

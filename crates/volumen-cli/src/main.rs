@@ -105,9 +105,16 @@ fn main() -> Result<()> {
                 step_size: step,
                 width,
                 height,
+                affine: None,
             };
 
-            SurfaceVolumeGenerator::render_to_dir(&vol, &surface_mesh, &config, &output)?;
+            if mesh.is_dir() {
+                println!("Loading VC3D tifxyz lattice: {}", mesh.display());
+                let tifxyz = volumen_geom::TifxyzMesh::load_from_dir(&mesh)?;
+                SurfaceVolumeGenerator::render_tifxyz_to_dir(&vol, &tifxyz, &config, &output)?;
+            } else {
+                SurfaceVolumeGenerator::render_mesh_to_dir(&vol, &surface_mesh, &config, &output)?;
+            }
             println!("Surface volume successfully rendered to {}", output.display());
         }
 
