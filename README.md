@@ -67,6 +67,20 @@ The official Vesuvius Challenge ecosystem is centered around the [`ScrollPrize/v
 
 ---
 
+### Tool Differentiation & Deprecation Status in the Vesuvius Ecosystem
+
+The Vesuvius Challenge software ecosystem is often misunderstood due to rapid evolution across hackathons and prize milestones:
+
+| Software / Tool | Primary Author / Origin | Current Status | Architectural Role in the Pipeline |
+| :--- | :--- | :---: | :--- |
+| **`Volume Cartographer (VC3D)`** | EduceLab / Scroll Prize | **Active Core GUI** | Interactive 3D slice visualization, manual/assisted segment tracing (`GrowPatch`), and baseline renderer (`vc_render_tifxyz`). Heavy C++23/Qt6/Boost build. |
+| **`ThaumatoAnakalyptor`** | Julian Schilliger (Grand Prize 2023) | **Deprecated** (moved to `villa/deprecated/`) | **Historically critical baseline**, but superseded. Bottom-up gradient following suffered severe sheet-switches in pyrolyzed/compressed zones where density contrast vanishes. |
+| **`Spiral Fitting` (`fit_spiral`)** | Scroll Prize Team (2025/2026) | **Active SOTA Unroller** | Solves whole-scroll continuity by deforming an **ideal Archimedean spiral** via a diffeomorphic velocity field $\phi_1(x)$. Bridges gaps where local tracing stalls. |
+| **`Lasagna`** | Scroll Prize Team | **Active ML Backend** | PyTorch 3D U-Net extracting fiber orientations and surface normal vector fields (`.lasagna.json`). |
+| **`Volumen` (This Project)** | Volumen Contributors | **Active High-Performance Core** | **Ultra-fast Rust compute backbone**: replaces legacy C++ ray-casters (`vc_render`), streams OME-Zarr out-of-core without memory exhaustion, supports VC3D `tifxyz` & Wavefront `.obj`, and computes exact analytical spiral manifold projections. |
+
+---
+
 ## 3. The Technical Bottleneck in the Current Vesuvius Pipeline
 
 ```
@@ -230,6 +244,26 @@ volumen inspect --volume path/to/scroll.zarr
 Check for non-manifold edges, invalid UV coordinates, and degenerate triangles:
 ```bash
 volumen verify --mesh path/to/segment.obj
+```
+
+### Unroll Spiral Manifold (Grand Prize Unrolling Pipeline)
+Continuously unroll an Archimedean spiral manifold directly from raw micro-CT volumetric data without prior segmentation:
+```bash
+volumen unroll-spiral \
+  --volume path/to/scroll.zarr \
+  --output path/to/unrolled_strip/ \
+  --center-x 3500.0 \
+  --center-y 3200.0 \
+  --a 250.0 \
+  --b 12.5 \
+  --turns-start 1.0 \
+  --turns-end 4.5 \
+  --z-min 1000.0 \
+  --z-max 2500.0 \
+  --layers 32 \
+  --step 1.0 \
+  --width 2048 \
+  --height 1500
 ```
 
 ---

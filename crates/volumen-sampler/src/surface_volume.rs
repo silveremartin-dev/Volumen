@@ -29,6 +29,34 @@ impl Default for SurfaceVolumeConfig {
     }
 }
 
+/// Configuration for continuous Archimedean spiral unrolling.
+#[derive(Debug, Clone)]
+pub struct SpiralUnrollConfig {
+    pub theta_min: f64,
+    pub theta_max: f64,
+    pub z_min: f64,
+    pub z_max: f64,
+    pub width: usize,
+    pub height: usize,
+    pub num_layers: usize,
+    pub step_size: f64,
+}
+
+impl Default for SpiralUnrollConfig {
+    fn default() -> Self {
+        Self {
+            theta_min: 0.0,
+            theta_max: 4.0 * std::f64::consts::PI, // Default 2 turns
+            z_min: 0.0,
+            z_max: 100.0,
+            width: 1024,
+            height: 512,
+            num_layers: 32,
+            step_size: 1.0,
+        }
+    }
+}
+
 /// High-performance Surface Volume generator with exact barycentric ray-casting.
 pub struct SurfaceVolumeGenerator;
 
@@ -146,6 +174,85 @@ impl SurfaceVolumeGenerator {
             let layer_filename = format!("{:02}.tif", k);
             let layer_path = out_path.join(layer_filename);
             save_layer_tiff(&layer_path, tifxyz.width as u32, tifxyz.height as u32, &slice_data)?;
+        }
+
+        Ok(())
+    }
+
+    /// Renders an unrolled surface volume directly from an analytical 3D Archimedean spiral manifold.
+    /// This bypasses mesh tracing artifacts and prevents sheet switches in pyrolyzed sections.
+    pub fn render_spiral_to_dir<P: AsRef<Path>>(
+        volume: &ZarrVolume,
+        params: &volumen_geom::SpiralParameters,
+        config: &SpiralUnrollConfig,
+        output_dir: P,
+    ) -> Result<()> {
+        let out_path = output_dir.as_ref();
+        create_dir_all(out_path)?;
+
+        let num_layers = config.num_layers;
+        let half_layers = (num_layers as f64 - 1.0) / 2.0;
+
+        tracing::info!(
+            "Unrolling spiral manifold: theta=[{:.2}, {:.2}], z=[{:.2}, {:.2}], {} layers to {}",
+            config.theta_min,
+            config.theta_max,
+            config.z_min,
+            config.z_max,
+            num_layers,
+            out_path.display()
+        );
+
+        let d_theta = if config.width > 1 {
+            (config.theta_max - config.theta_min) / (config.width as f64 - 1.0)
+        } else {
+            0.0
+        };
+
+        let d_z = if config.height > 1 {
+            (config.z_max - config.z_min) / (config.height as f64 - 1.0)
+        } else {
+            0.0
+        };
+
+        // Precompute (point_0, normal) per column x to avoid repeating trig calculations across z and layers
+        let columns: Vec<(f64, volumen_core::Vec3D, f64, f64)> = (0..config.width)
+            .into_par_iter()
+            .map(|x| {
+                let theta = config.theta_min + (x as f64) * d_theta;
+                let r = params.radius_at(theta);
+                let normal = params.normal_at(theta);
+                let cos_t = theta.cos();
+                let sin_t = theta.sin();
+                (r, normal, cos_t, sin_t)
+            })
+            .collect();
+
+        for k in 0..num_layers {
+            let offset = (k as f64 - half_layers) * config.step_size;
+            let mut slice_data = vec![0u16; config.width * config.height];
+
+            slice_data
+                .par_chunks_mut(config.width)
+                .enumerate()
+                .for_each(|(y, row)| {
+                    let z = config.z_min + (y as f64) * d_z;
+                    for (x, pixel) in row.iter_mut().enumerate() {
+                        let (r, normal, cos_t, sin_t) = columns[x];
+                        let base_pt = volumen_core::Point3D::new(
+                            params.center_x + r * cos_t,
+                            params.center_y + r * sin_t,
+                            z,
+                        );
+                        let ray_pt = base_pt + (normal * offset);
+                        let intensity = TrilinearSampler::sample(volume, &ray_pt);
+                        *pixel = intensity.clamp(0.0, 65535.0) as u16;
+                    }
+                });
+
+            let layer_filename = format!("{:02}.tif", k);
+            let layer_path = out_path.join(layer_filename);
+            save_layer_tiff(&layer_path, config.width as u32, config.height as u32, &slice_data)?;
         }
 
         Ok(())

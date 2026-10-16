@@ -43,6 +43,34 @@ impl SpiralParameters {
 
         (winding_k, residual)
     }
+
+    /// Evaluates the 3D position on the spiral manifold at cumulative angle theta and height z.
+    #[inline]
+    pub fn point_at(&self, theta: f64, z: f64) -> Point3D {
+        let r = self.radius_at(theta);
+        Point3D::new(
+            self.center_x + r * theta.cos(),
+            self.center_y + r * theta.sin(),
+            z,
+        )
+    }
+
+    /// Evaluates the outward unit normal vector on the spiral surface at cumulative angle theta.
+    /// Orthogonal to tangent vector t = dP/dtheta in the xy-plane and to z-axis.
+    #[inline]
+    pub fn normal_at(&self, theta: f64) -> volumen_core::Vec3D {
+        let r = self.radius_at(theta);
+        let cos_t = theta.cos();
+        let sin_t = theta.sin();
+        let tx = self.b * cos_t - r * sin_t;
+        let ty = self.b * sin_t + r * cos_t;
+        let norm = (tx * tx + ty * ty).sqrt();
+        if norm > 1e-12 {
+            volumen_core::Vec3D::new(ty / norm, -tx / norm, 0.0)
+        } else {
+            volumen_core::Vec3D::new(cos_t, sin_t, 0.0)
+        }
+    }
 }
 
 /// Continuous Spiral Unrolling Engine.

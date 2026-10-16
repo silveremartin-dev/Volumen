@@ -2,8 +2,8 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use volumen_geom::{NormalEstimator, SurfaceMesh};
-use volumen_sampler::{SurfaceVolumeConfig, SurfaceVolumeGenerator};
+use volumen_geom::{NormalEstimator, SpiralParameters, SurfaceMesh};
+use volumen_sampler::{SpiralUnrollConfig, SurfaceVolumeConfig, SurfaceVolumeGenerator};
 use volumen_zarr::ZarrVolume;
 
 #[derive(Parser)]
@@ -64,6 +64,69 @@ enum Commands {
         /// Path to the Wavefront OBJ file
         #[arg(short, long)]
         mesh: PathBuf,
+    },
+
+    /// Unroll continuous 3D Archimedean spiral manifold directly into 2.5D surface volume
+    UnrollSpiral {
+        /// Path to the OME-Zarr scroll volume root directory
+        #[arg(short, long)]
+        volume: PathBuf,
+
+        /// Output directory where unrolled TIFF layer slices will be saved
+        #[arg(short, long)]
+        output: PathBuf,
+
+        /// Center X coordinate of scroll spiral core
+        #[arg(long, default_value_t = 0.0)]
+        center_x: f64,
+
+        /// Center Y coordinate of scroll spiral core
+        #[arg(long, default_value_t = 0.0)]
+        center_y: f64,
+
+        /// Base radius at theta = 0
+        #[arg(short, long, default_value_t = 10.0)]
+        a: f64,
+
+        /// Radial expansion pitch per radian: r(theta) = a + b * theta
+        #[arg(short, long, default_value_t = 2.0)]
+        b: f64,
+
+        /// Starting angle in turns (e.g. 0.0)
+        #[arg(long, default_value_t = 0.0)]
+        turns_start: f64,
+
+        /// Ending angle in turns (e.g. 5.0)
+        #[arg(long, default_value_t = 2.0)]
+        turns_end: f64,
+
+        /// Starting Z coordinate in voxels
+        #[arg(long, default_value_t = 0.0)]
+        z_min: f64,
+
+        /// Ending Z coordinate in voxels
+        #[arg(long, default_value_t = 100.0)]
+        z_max: f64,
+
+        /// Number of depth layers across papyrus sheet
+        #[arg(short, long, default_value_t = 32)]
+        layers: usize,
+
+        /// Normal sampling step size in voxels
+        #[arg(short, long, default_value_t = 1.0)]
+        step: f64,
+
+        /// Output image width (angular / arc-length resolution)
+        #[arg(long, default_value_t = 1024)]
+        width: usize,
+
+        /// Output image height (axial Z resolution)
+        #[arg(long, default_value_t = 512)]
+        height: usize,
+
+        /// Maximum chunk cache memory in GB
+        #[arg(long, default_value_t = 8)]
+        max_cache_gb: usize,
     },
 }
 
@@ -150,7 +213,53 @@ fn main() -> Result<()> {
                 println!("- Warning: No normal vectors defined in file. Volumen can synthesize them on-the-fly.");
             }
         }
+
+        Commands::UnrollSpiral {
+            volume,
+            output,
+            center_x,
+            center_y,
+            a,
+            b,
+            turns_start,
+            turns_end,
+            z_min,
+            z_max,
+            layers,
+            step,
+            width,
+            height,
+            max_cache_gb,
+        } => {
+            println!("Opening OME-Zarr volume: {}", volume.display());
+            let max_chunks = (max_cache_gb * 1024 * 1024 * 1024) / (128 * 128 * 128 * 2);
+            let vol = ZarrVolume::open(&volume, max_chunks)?;
+
+            let params = SpiralParameters::new(center_x, center_y, a, b);
+            let theta_min = turns_start * 2.0 * std::f64::consts::PI;
+            let theta_max = turns_end * 2.0 * std::f64::consts::PI;
+
+            let config = SpiralUnrollConfig {
+                theta_min,
+                theta_max,
+                z_min,
+                z_max,
+                width,
+                height,
+                num_layers: layers,
+                step_size: step,
+            };
+
+            println!(
+                "Unrolling Archimedean spiral manifold [turns: {:.2} -> {:.2}, z: {:.1} -> {:.1}] to {}...",
+                turns_start, turns_end, z_min, z_max, output.display()
+            );
+
+            SurfaceVolumeGenerator::render_spiral_to_dir(&vol, &params, &config, &output)?;
+            println!("Spiral surface volume successfully unrolled to {}", output.display());
+        }
     }
 
     Ok(())
 }
+
