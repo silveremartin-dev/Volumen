@@ -1,0 +1,22 @@
+[package]
+name = "volumen-sampler"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "High-speed trilinear interpolation, parallel normal ray-casting, and 2.5D surface volume generator"
+
+[dependencies]
+volumen-core.workspace = true
+volumen-zarr.workspace = true
+volumen-geom.workspace = true
+rayon.workspace = true
+glam.workspace = true
+tiff.workspace = true
+image.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+indicatif.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

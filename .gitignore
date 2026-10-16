@@ -1,0 +1,23 @@
+/target
+**/*.rs.bk
+*.swp
+*.bak
+*~
+
+# Data & Large Files
+data/
+*.zarr
+*.tif
+*.tiff
+*.volpkg
+*.obj.cache
+
+# Scratch & Logs
+scratch/*
+!scratch/.gitkeep
+logs/*
+!logs/.gitkeep
+
+# OS generated
+.DS_Store
+Thumbs.db

@@ -1,0 +1,18 @@
+[package]
+name = "volumen-geom"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Differential geometry, normal vector estimation, OBJ surface mesh parsing, and topological validation"
+
+[dependencies]
+volumen-core.workspace = true
+glam.workspace = true
+rayon.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

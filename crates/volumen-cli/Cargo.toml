@@ -1,0 +1,22 @@
+[package]
+name = "volumen-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "High-performance CLI tools for Vesuvius scroll rendering, surface extraction, and mesh verification"
+
+[[bin]]
+name = "volumen"
+path = "src/main.rs"
+
+[dependencies]
+volumen-core.workspace = true
+volumen-zarr.workspace = true
+volumen-geom.workspace = true
+volumen-sampler.workspace = true
+clap.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+indicatif.workspace = true
