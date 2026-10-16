@@ -212,7 +212,7 @@ The table below contrasts the legacy reference stack ([`ScrollPrize/villa`](http
 | **Pipeline Stages** | **5 stages** (multi-process/disk) | **1 direct stage** (out-of-core) | Zero intermediate disk I/O |
 | **Carbon Ink Text Legibility** | Recovered with minor chordal sagitta | **Sharply recovered with zero sagitta** | **Full character restoration** |
 
-*See full report and visual artifacts in [Technical Report 06: Spiral Unrolling Benchmark](doc/06_spiral_unrolling_benchmark.md).*
+*See full report and visual artifacts in [Technical Report 06: Spiral Unrolling Benchmark](docs/06_spiral_unrolling_benchmark.md).*
 
 ### Empirical Validation on Real Herculaneum Papyrus (Scroll 1 / PHerc.Paris 4)
 
@@ -228,7 +228,7 @@ The table below contrasts the legacy reference stack ([`ScrollPrize/villa`](http
 | **Raw Uncalibrated MAE** | `0.00` | `26.97 / 255 (10.6%)` | Linear window offset |
 | **Transfer-Calibrated MAE** | `0.00` | **`1.56 / 255 (0.61%)`** | **Bit-Precision Concordance** |
 
-*See full report in [Technical Report 07: Real Scroll Benchmark](doc/07_real_scroll_benchmark.md).*
+*See full report in [Technical Report 07: Real Scroll Benchmark](docs/07_real_scroll_benchmark.md) and [Differential Analysis](docs/DIFFERENTIAL_ANALYSIS.md).*
 
 ---
 
@@ -320,12 +320,14 @@ volumen unroll-spiral \
 ```
 Volumen/
 ├── Cargo.toml                  # Workspace manifest
+├── pyproject.toml              # Python package metadata (pip install .)
 ├── README.md                   # Complete scientific overview & benchmark specs
 ├── AGENTS.md                   # Collaboration & agent engineering principles
-├── doc/                        # Technical & mathematical specifications
+├── docs/                       # Technical & mathematical specifications
 │   ├── 01_architecture.md
 │   ├── 02_zarr_streaming.md
-│   └── 03_surface_sampling.md
+│   ├── 03_surface_sampling.md
+│   └── DIFFERENTIAL_ANALYSIS.md
 ├── scratch/                    # Developer scratchpads & local prototypes
 ├── scripts/                    # Automation & benchmark scripts
 ├── tests/                      # End-to-end integration tests & differential benchmarks
