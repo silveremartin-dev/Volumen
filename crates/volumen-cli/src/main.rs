@@ -172,7 +172,7 @@ fn main() -> Result<()> {
             scale: _scale,
             scale_segmentation: _scale_segmentation,
             group_idx: _group_idx,
-            flip_normals: _flip_normals,
+            flip_normals,
             width,
             height,
             max_cache_gb,
@@ -187,7 +187,9 @@ fn main() -> Result<()> {
                 width,
                 height,
                 affine: None,
+                flip_normals,
             };
+
 
             if mesh.is_dir() {
                 println!("Loading VC3D tifxyz lattice: {}", mesh.display());

@@ -42,7 +42,10 @@ fn test_end_to_end_surface_volume_pipeline() {
         step_size: 0.5,
         width: 32,
         height: 32,
+        affine: None,
+        flip_normals: false,
     };
+
 
     SurfaceVolumeGenerator::render_mesh_to_dir(&vol, &mesh, &config, dir.path())
         .expect("Surface volume generation should succeed");

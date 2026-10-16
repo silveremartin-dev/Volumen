@@ -43,7 +43,9 @@ fn test_differential_benchmark_invariant_and_psnr() {
         width: 64,
         height: 64,
         affine: None,
+        flip_normals: false,
     };
+
 
     // 3. Render Run 1
     let start_1 = std::time::Instant::now();

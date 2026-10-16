@@ -48,7 +48,9 @@ fn test_reproducible_benchmark_across_random_datasets() {
             width: 64,
             height: 64,
             affine: None,
+            flip_normals: false,
         };
+
 
         let t1 = std::time::Instant::now();
         SurfaceVolumeGenerator::render_mesh_to_dir(&vol, &obj_mesh, &config, temp_dir_1.path())

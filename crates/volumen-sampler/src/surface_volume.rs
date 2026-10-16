@@ -15,6 +15,7 @@ pub struct SurfaceVolumeConfig {
     pub width: usize,
     pub height: usize,
     pub affine: Option<AffineTransform>,
+    pub flip_normals: bool,
 }
 
 impl Default for SurfaceVolumeConfig {
@@ -25,9 +26,11 @@ impl Default for SurfaceVolumeConfig {
             width: 1024,
             height: 1024,
             affine: None,
+            flip_normals: false,
         }
     }
 }
+
 
 /// Configuration for continuous Archimedean spiral unrolling.
 #[derive(Debug, Clone)]
@@ -110,11 +113,16 @@ impl SurfaceVolumeGenerator {
                             // Apply affine transform if present
                             let pt_transformed = affine.transform_point(&base_pt);
                             let normal_transformed = affine.transform_normal(&normal);
+                            let normal_final = if config.flip_normals {
+                                normal_transformed * -1.0
+                            } else {
+                                normal_transformed
+                            };
 
                             // Extrude along normal
-                            let ray_pt = pt_transformed + (normal_transformed * offset);
+                            let ray_pt = pt_transformed + (normal_final * offset);
                             let intensity = TrilinearSampler::sample(volume, &ray_pt);
-                            *pixel = intensity.clamp(0.0, 65535.0) as u16;
+                            *pixel = intensity.round().clamp(0.0, 65535.0) as u16;
                         } else {
                             *pixel = 0;
                         }
@@ -161,15 +169,21 @@ impl SurfaceVolumeGenerator {
                             let normal = estimate_grid_normal(tifxyz, x, y);
                             let pt_t = affine.transform_point(&base_pt);
                             let n_t = affine.transform_normal(&normal);
+                            let n_final = if config.flip_normals {
+                                n_t * -1.0
+                            } else {
+                                n_t
+                            };
 
-                            let ray_pt = pt_t + (n_t * offset);
+                            let ray_pt = pt_t + (n_final * offset);
                             let intensity = TrilinearSampler::sample(volume, &ray_pt);
-                            *pixel = intensity.clamp(0.0, 65535.0) as u16;
+                            *pixel = intensity.round().clamp(0.0, 65535.0) as u16;
                         } else {
                             *pixel = 0;
                         }
                     }
                 });
+
 
             let layer_filename = format!("{:02}.tif", k);
             let layer_path = out_path.join(layer_filename);
