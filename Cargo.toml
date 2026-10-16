@@ -6,6 +6,7 @@ members = [
     "crates/volumen-geom",
     "crates/volumen-sampler",
     "crates/volumen-cli",
+    "crates/volumen-py",
 ]
 
 [workspace.package]
@@ -46,6 +47,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 thiserror = "2.0"
 anyhow = "1.0"
 indicatif = { version = "0.17", features = ["rayon"] }
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py38"] }
 
 # Testing & Benchmarking
 criterion = "0.5"

@@ -1,0 +1,8 @@
+[target.x86_64-pc-windows-gnu]
+rustflags = ["-C", "linker=rust-lld"]
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "linker=rust-lld"]
+
+[env]
+PYO3_PYTHON = "C:\\Users\\silve\\AppData\\Local\\Programs\\Python\\Python314\\python.exe"

@@ -154,6 +154,70 @@ impl DeformationField {
         Ok(field)
     }
 
+    /// Load deformation field from a directory containing `dx.tif`, `dy.tif`, and `dz.tif`.
+    pub fn load_tiff_dir<P: AsRef<Path>>(
+        dir: P,
+        theta_min: f64,
+        theta_max: f64,
+        z_min: f64,
+        z_max: f64,
+    ) -> Result<Self> {
+        let root = dir.as_ref();
+        let dx_path = root.join("dx.tif");
+        let dy_path = root.join("dy.tif");
+        let dz_path = root.join("dz.tif");
+
+        let (w_x, h_x, dx) = read_tiff_channel(&dx_path)?;
+        let (w_y, h_y, dy) = read_tiff_channel(&dy_path)?;
+        let (w_z, h_z, dz) = read_tiff_channel(&dz_path)?;
+
+        if w_x != w_y || w_x != w_z || h_x != h_y || h_x != h_z {
+            return Err(VolumenError::InvalidParameter(format!(
+                "Dimension mismatch in deformation TIFF channels: dx=({}x{}), dy=({}x{}), dz=({}x{})",
+                w_x, h_x, w_y, h_y, w_z, h_z
+            )));
+        }
+
+        let mut displacements = Vec::with_capacity(w_x * h_x);
+        for i in 0..(w_x * h_x) {
+            displacements.push(Vec3D::new(dx[i], dy[i], dz[i]));
+        }
+
+        Self::new(theta_min, theta_max, z_min, z_max, w_x, h_x, displacements)
+    }
+
+    /// Automatically loads a deformation field from a file (.json) or directory/TIFF.
+    pub fn load_auto<P: AsRef<Path>>(
+        path: P,
+        theta_min: f64,
+        theta_max: f64,
+        z_min: f64,
+        z_max: f64,
+    ) -> Result<Self> {
+        let p = path.as_ref();
+        if p.is_dir() {
+            Self::load_tiff_dir(p, theta_min, theta_max, z_min, z_max)
+        } else if let Some(ext) = p.extension().and_then(|s| s.to_str()) {
+            if ext.eq_ignore_ascii_case("json") {
+                Self::load_json(p)
+            } else if ext.eq_ignore_ascii_case("tif") || ext.eq_ignore_ascii_case("tiff") {
+                // If single TIFF is provided, check if parent dir has dx/dy/dz or load single multi-channel
+                let parent = p.parent().unwrap_or(p);
+                if parent.join("dx.tif").exists() && parent.join("dy.tif").exists() {
+                    Self::load_tiff_dir(parent, theta_min, theta_max, z_min, z_max)
+                } else {
+                    let (w, h, data) = read_tiff_channel(p)?;
+                    let displacements = data.into_iter().map(|v| Vec3D::new(v, 0.0, 0.0)).collect();
+                    Self::new(theta_min, theta_max, z_min, z_max, w, h, displacements)
+                }
+            } else {
+                Self::load_json(p)
+            }
+        } else {
+            Self::load_json(p)
+        }
+    }
+
     /// Bilinear interpolation of displacement at continuous (theta, z)
     #[inline]
     pub fn sample(&self, theta: f64, z: f64) -> Vec3D {
@@ -254,6 +318,25 @@ impl DeformedSpiralManifold {
     }
 }
 
+
+fn read_tiff_channel<P: AsRef<Path>>(path: P) -> Result<(usize, usize, Vec<f64>)> {
+    let file = File::open(path.as_ref())?;
+    let mut decoder = tiff::decoder::Decoder::new(file)
+        .map_err(|e| VolumenError::Tiff(e.to_string()))?;
+    let (w, h) = decoder.dimensions()
+        .map_err(|e| VolumenError::Tiff(e.to_string()))?;
+    let result = decoder.read_image()
+        .map_err(|e| VolumenError::Tiff(e.to_string()))?;
+    let values: Vec<f64> = match result {
+        tiff::decoder::DecodingResult::F32(v) => v.into_iter().map(|x| x as f64).collect(),
+        tiff::decoder::DecodingResult::F64(v) => v,
+        tiff::decoder::DecodingResult::U16(v) => v.into_iter().map(|x| x as f64).collect(),
+        tiff::decoder::DecodingResult::I16(v) => v.into_iter().map(|x| x as f64).collect(),
+        tiff::decoder::DecodingResult::U8(v) => v.into_iter().map(|x| x as f64).collect(),
+        other => return Err(VolumenError::Tiff(format!("Unsupported TIFF format for deformation channel: {:?}", other))),
+    };
+    Ok((w as usize, h as usize, values))
+}
 
 #[cfg(test)]
 mod tests {

@@ -1,0 +1,18 @@
+[package]
+name = "volumen-py"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "High-performance Python bindings (PyO3) for Volumen virtual unwrapping engine"
+
+[lib]
+name = "volumen"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+volumen-core.workspace = true
+volumen-geom.workspace = true
+volumen-zarr.workspace = true
+volumen-sampler.workspace = true
+pyo3.workspace = true

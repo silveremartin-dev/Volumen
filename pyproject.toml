@@ -1,0 +1,17 @@
+[build-system]
+requires = ["maturin>=1.4,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "volumen"
+version = "0.1.0"
+description = "High-performance virtual unwrapping engine for the Vesuvius Challenge"
+authors = [{ name = "Silvere Martin-Michiellot" }]
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT OR Apache-2.0" }
+keywords = ["vesuvius-challenge", "volumetric-rendering", "zarr", "herculaneum"]
+
+[tool.maturin]
+manifest-path = "crates/volumen-py/Cargo.toml"
+module-name = "volumen"

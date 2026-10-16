@@ -19,9 +19,9 @@ struct Cli {
 enum Commands {
     /// Render a 2.5D surface volume from an OME-Zarr volume and an OBJ or tifxyz mesh (drop-in replacement for vc_render_tifxyz)
     Render {
-        /// Path to the OME-Zarr scroll volume root directory
+        /// Path to the OME-Zarr scroll volume root directory (or s3:// / https:// URL)
         #[arg(short, long, alias = "v")]
-        volume: PathBuf,
+        volume: String,
 
         /// Path to the segmented mesh Wavefront OBJ file or tifxyz directory
         #[arg(short, long, alias = "segmentation", alias = "s")]
@@ -29,7 +29,11 @@ enum Commands {
 
         /// Output directory where 2.5D TIFF layer slices will be saved
         #[arg(short, long, alias = "tif-output")]
-        output: PathBuf,
+        output: Option<PathBuf>,
+
+        /// Optional directory where chunked OME-Zarr array will be written directly
+        #[arg(long, alias = "zarr-output", alias = "zarr-out")]
+        zarr_output: Option<PathBuf>,
 
         /// Number of depth layers to extract along the surface normal
         #[arg(short, long, alias = "num-slices", alias = "n", default_value_t = 64)]
@@ -71,9 +75,9 @@ enum Commands {
 
     /// Inspect OME-Zarr metadata, chunks, and dimensions
     Inspect {
-        /// Path to the OME-Zarr scroll volume root directory
+        /// Path to the OME-Zarr scroll volume root directory (or s3:// / https:// URL)
         #[arg(short, long)]
-        volume: PathBuf,
+        volume: String,
     },
 
     /// Verify Wavefront OBJ mesh integrity, normal vectors, and bounding box
@@ -85,13 +89,17 @@ enum Commands {
 
     /// Unroll continuous 3D Archimedean spiral manifold directly into 2.5D surface volume
     UnrollSpiral {
-        /// Path to the OME-Zarr scroll volume root directory
+        /// Path to the OME-Zarr scroll volume root directory (or s3:// / https:// URL)
         #[arg(short, long)]
-        volume: PathBuf,
+        volume: String,
 
         /// Output directory where unrolled TIFF layer slices will be saved
-        #[arg(short, long)]
-        output: PathBuf,
+        #[arg(short, long, alias = "tif-output")]
+        output: Option<PathBuf>,
+
+        /// Optional directory where chunked OME-Zarr array will be written directly
+        #[arg(long, alias = "zarr-output", alias = "zarr-out")]
+        zarr_output: Option<PathBuf>,
 
         /// Center X coordinate of scroll spiral core
         #[arg(long, default_value_t = 0.0)]
@@ -145,7 +153,7 @@ enum Commands {
         #[arg(long, default_value_t = 8)]
         max_cache_gb: usize,
 
-        /// Optional path to non-rigid deformation field JSON (produced by fit_spiral / neural network)
+        /// Optional path to non-rigid deformation field (.json, directory of dx/dy/dz.tif, or 3D flow TIFF)
         #[arg(long, alias = "flow-field")]
         deformation_field: Option<PathBuf>,
     },
@@ -167,6 +175,7 @@ fn main() -> Result<()> {
             volume,
             mesh,
             output,
+            zarr_output,
             layers,
             step,
             scale: _scale,
@@ -177,9 +186,9 @@ fn main() -> Result<()> {
             height,
             max_cache_gb,
         } => {
-            println!("Opening OME-Zarr volume: {}", volume.display());
+            println!("Opening OME-Zarr volume: {}", volume);
             let max_chunks = (max_cache_gb * 1024 * 1024 * 1024) / (128 * 128 * 128 * 2);
-            let vol = ZarrVolume::open(&volume, max_chunks)?;
+            let vol = ZarrVolume::open_auto(&volume, max_chunks)?;
 
             let config = SurfaceVolumeConfig {
                 num_layers: layers,
@@ -190,11 +199,21 @@ fn main() -> Result<()> {
                 flip_normals,
             };
 
+            let out_tiff = output.or_else(|| {
+                if zarr_output.is_none() {
+                    Some(PathBuf::from("output_layers"))
+                } else {
+                    None
+                }
+            });
 
             if mesh.is_dir() {
                 println!("Loading VC3D tifxyz lattice: {}", mesh.display());
                 let tifxyz = volumen_geom::TifxyzMesh::load_from_dir(&mesh)?;
-                SurfaceVolumeGenerator::render_tifxyz_to_dir(&vol, &tifxyz, &config, &output)?;
+                if let Some(ref out_dir) = out_tiff {
+                    SurfaceVolumeGenerator::render_tifxyz_to_dir(&vol, &tifxyz, &config, out_dir)?;
+                    println!("Surface volume TIFFs successfully rendered to {}", out_dir.display());
+                }
             } else {
                 println!("Loading Wavefront OBJ mesh: {}", mesh.display());
                 let mut surface_mesh = SurfaceMesh::load_obj(&mesh)?;
@@ -202,21 +221,28 @@ fn main() -> Result<()> {
                     println!("Computing smooth differential vertex normals...");
                     NormalEstimator::compute_vertex_normals(&mut surface_mesh);
                 }
-                SurfaceVolumeGenerator::render_mesh_to_dir(&vol, &surface_mesh, &config, &output)?;
+                if let Some(ref out_dir) = out_tiff {
+                    SurfaceVolumeGenerator::render_mesh_to_dir(&vol, &surface_mesh, &config, out_dir)?;
+                    println!("Surface volume TIFFs successfully rendered to {}", out_dir.display());
+                }
+                if let Some(ref zarr_dir) = zarr_output {
+                    SurfaceVolumeGenerator::render_mesh_to_zarr(&vol, &surface_mesh, &config, zarr_dir)?;
+                    println!("Surface volume chunked Zarr successfully written to {}", zarr_dir.display());
+                }
             }
-            println!("Surface volume successfully rendered to {}", output.display());
         }
 
-
         Commands::Inspect { volume } => {
-            println!("Inspecting OME-Zarr volume: {}", volume.display());
-            let meta = volumen_zarr::ZarrMetadata::load_from_dir(&volume)?;
+            println!("Inspecting OME-Zarr volume: {}", volume);
+            let vol = ZarrVolume::open_auto(&volume, 16)?;
+            let meta = &vol.metadata;
             let (dx, dy, dz) = meta.dimensions();
             let (cx, cy, cz) = meta.chunk_sizes();
             println!("- Zarr Format: {}", meta.zarr_format);
             println!("- Dimensions (X, Y, Z): ({}, {}, {}) voxels", dx, dy, dz);
             println!("- Chunk Dimensions (CX, CY, CZ): ({}, {}, {}) voxels", cx, cy, cz);
             println!("- Data Type: {}", meta.dtype);
+            println!("- Remote Source: {}", vol.is_remote);
         }
 
         Commands::Verify { mesh } => {
@@ -244,6 +270,7 @@ fn main() -> Result<()> {
         Commands::UnrollSpiral {
             volume,
             output,
+            zarr_output,
             center_x,
             center_y,
             a,
@@ -259,21 +286,21 @@ fn main() -> Result<()> {
             max_cache_gb,
             deformation_field,
         } => {
-            println!("Opening OME-Zarr volume: {}", volume.display());
+            println!("Opening OME-Zarr volume: {}", volume);
             let max_chunks = (max_cache_gb * 1024 * 1024 * 1024) / (128 * 128 * 128 * 2);
-            let vol = ZarrVolume::open(&volume, max_chunks)?;
+            let vol = ZarrVolume::open_auto(&volume, max_chunks)?;
+
+            let theta_min = turns_start * 2.0 * std::f64::consts::PI;
+            let theta_max = turns_end * 2.0 * std::f64::consts::PI;
 
             let params = SpiralParameters::new(center_x, center_y, a, b);
             let deformation = if let Some(ref def_path) = deformation_field {
                 println!("Loading non-rigid deformation field: {}", def_path.display());
-                Some(volumen_geom::DeformationField::load_json(def_path)?)
+                Some(volumen_geom::DeformationField::load_auto(def_path, theta_min, theta_max, z_min, z_max)?)
             } else {
                 None
             };
             let manifold = volumen_geom::DeformedSpiralManifold::new(params, deformation);
-
-            let theta_min = turns_start * 2.0 * std::f64::consts::PI;
-            let theta_max = turns_end * 2.0 * std::f64::consts::PI;
 
             let config = SpiralUnrollConfig {
                 theta_min,
@@ -286,13 +313,31 @@ fn main() -> Result<()> {
                 step_size: step,
             };
 
-            println!(
-                "Unrolling spiral manifold [turns: {:.2} -> {:.2}, z: {:.1} -> {:.1}] to {}...",
-                turns_start, turns_end, z_min, z_max, output.display()
-            );
+            let out_tiff = output.or_else(|| {
+                if zarr_output.is_none() {
+                    Some(PathBuf::from("output_spiral_layers"))
+                } else {
+                    None
+                }
+            });
 
-            SurfaceVolumeGenerator::render_deformed_spiral_to_dir(&vol, &manifold, &config, &output)?;
-            println!("Spiral surface volume successfully unrolled to {}", output.display());
+            if let Some(ref out_dir) = out_tiff {
+                println!(
+                    "Unrolling spiral manifold [turns: {:.2} -> {:.2}, z: {:.1} -> {:.1}] to TIFFs in {}...",
+                    turns_start, turns_end, z_min, z_max, out_dir.display()
+                );
+                SurfaceVolumeGenerator::render_deformed_spiral_to_dir(&vol, &manifold, &config, out_dir)?;
+                println!("Spiral surface volume TIFFs successfully saved to {}", out_dir.display());
+            }
+
+            if let Some(ref zarr_dir) = zarr_output {
+                println!(
+                    "Unrolling spiral manifold directly to chunked Zarr at {}...",
+                    zarr_dir.display()
+                );
+                SurfaceVolumeGenerator::render_deformed_spiral_to_zarr(&vol, &manifold, &config, zarr_dir)?;
+                println!("Spiral surface volume chunked Zarr successfully saved to {}", zarr_dir.display());
+            }
         }
 
     }

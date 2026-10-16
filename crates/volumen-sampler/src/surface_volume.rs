@@ -5,7 +5,7 @@ use std::fs::create_dir_all;
 use std::path::Path;
 use volumen_core::{Result, Vec3D};
 use volumen_geom::{AffineTransform, SurfaceMesh, TifxyzMesh, UVSpatialIndex};
-use volumen_zarr::ZarrVolume;
+use volumen_zarr::{ZarrVolume, ZarrWriter};
 
 /// Configuration for 2.5D surface volume extraction.
 #[derive(Debug, Clone)]
@@ -137,6 +137,67 @@ impl SurfaceVolumeGenerator {
         }
 
         progress.finish_with_message("Mesh surface volume render complete.");
+        Ok(())
+    }
+
+    /// Renders a surface volume using true barycentric ray-casting directly into a chunked OME-Zarr array.
+    pub fn render_mesh_to_zarr<P: AsRef<Path>>(
+        volume: &ZarrVolume,
+        mesh: &SurfaceMesh,
+        config: &SurfaceVolumeConfig,
+        zarr_output_dir: P,
+    ) -> Result<()> {
+        let uv_index = UVSpatialIndex::build(mesh, 128);
+        let num_layers = config.num_layers;
+        let half_layers = (num_layers as f64 - 1.0) / 2.0;
+
+        tracing::info!(
+            "Rendering {} layers directly to chunked Zarr at {}",
+            num_layers,
+            zarr_output_dir.as_ref().display()
+        );
+
+        let affine = config.affine.unwrap_or_else(AffineTransform::identity);
+        let mut slices = Vec::with_capacity(num_layers);
+
+        for k in 0..num_layers {
+            let offset = (k as f64 - half_layers) * config.step_size;
+            let mut slice_data = vec![0u16; config.width * config.height];
+
+            slice_data
+                .par_chunks_mut(config.width)
+                .enumerate()
+                .for_each(|(y, row)| {
+                    let v_coord = y as f64 / (config.height as f64 - 1.0).max(1.0);
+                    for (x, pixel) in row.iter_mut().enumerate() {
+                        let u_coord = x as f64 / (config.width as f64 - 1.0).max(1.0);
+                        if let Some((base_pt, normal)) = uv_index.sample_surface(mesh, u_coord, v_coord) {
+                            let pt_transformed = affine.transform_point(&base_pt);
+                            let normal_transformed = affine.transform_normal(&normal);
+                            let normal_final = if config.flip_normals {
+                                normal_transformed * -1.0
+                            } else {
+                                normal_transformed
+                            };
+
+                            let ray_pt = pt_transformed + (normal_final * offset);
+                            let intensity = TrilinearSampler::sample(volume, &ray_pt);
+                            *pixel = intensity.round().clamp(0.0, 65535.0) as u16;
+                        } else {
+                            *pixel = 0;
+                        }
+                    }
+                });
+
+            slices.push(slice_data);
+        }
+
+        let writer = ZarrWriter::create(
+            zarr_output_dir,
+            [num_layers as u64, config.height as u64, config.width as u64],
+            [num_layers as u64, 128, 128],
+        )?;
+        writer.write_slices(&slices, config.width, config.height)?;
         Ok(())
     }
 
@@ -278,6 +339,73 @@ impl SurfaceVolumeGenerator {
             save_layer_tiff(&layer_path, config.width as u32, config.height as u32, &slice_data)?;
         }
 
+        Ok(())
+    }
+
+    /// Renders an unrolled spiral surface volume directly into a chunked OME-Zarr array.
+    pub fn render_deformed_spiral_to_zarr<P: AsRef<Path>>(
+        volume: &ZarrVolume,
+        manifold: &volumen_geom::DeformedSpiralManifold,
+        config: &SpiralUnrollConfig,
+        zarr_output_dir: P,
+    ) -> Result<()> {
+        let num_layers = config.num_layers;
+        let half_layers = (num_layers as f64 - 1.0) / 2.0;
+
+        let d_theta = if config.width > 1 {
+            (config.theta_max - config.theta_min) / (config.width as f64 - 1.0)
+        } else {
+            0.0
+        };
+
+        let d_z = if config.height > 1 {
+            (config.z_max - config.z_min) / (config.height as f64 - 1.0)
+        } else {
+            0.0
+        };
+
+        let total_pixels = config.width * config.height;
+        let grid_pts_normals: Vec<(volumen_core::Point3D, volumen_core::Vec3D)> = (0..total_pixels)
+            .into_par_iter()
+            .map(|idx| {
+                let x = idx % config.width;
+                let y = idx / config.width;
+                let theta = config.theta_min + (x as f64) * d_theta;
+                let z = config.z_min + (y as f64) * d_z;
+                let base_pt = manifold.point_at(theta, z);
+                let normal = manifold.normal_at(theta, z);
+                (base_pt, normal)
+            })
+            .collect();
+
+        let mut slices = Vec::with_capacity(num_layers);
+
+        for k in 0..num_layers {
+            let offset = (k as f64 - half_layers) * config.step_size;
+            let mut slice_data = vec![0u16; config.width * config.height];
+
+            slice_data
+                .par_chunks_mut(config.width)
+                .enumerate()
+                .for_each(|(y, row)| {
+                    let y_offset = y * config.width;
+                    for (x, pixel) in row.iter_mut().enumerate() {
+                        let (base_pt, normal) = grid_pts_normals[y_offset + x];
+                        let ray_pt = base_pt + (normal * offset);
+                        let intensity = TrilinearSampler::sample(volume, &ray_pt);
+                        *pixel = intensity.round().clamp(0.0, 65535.0) as u16;
+                    }
+                });
+
+            slices.push(slice_data);
+        }
+
+        let writer = ZarrWriter::create(
+            zarr_output_dir,
+            [num_layers as u64, config.height as u64, config.width as u64],
+            [num_layers as u64, 128, 128],
+        )?;
+        writer.write_slices(&slices, config.width, config.height)?;
         Ok(())
     }
 }
