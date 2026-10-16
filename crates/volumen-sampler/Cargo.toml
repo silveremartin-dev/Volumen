@@ -17,6 +17,7 @@ image.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 indicatif.workspace = true
+serde.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

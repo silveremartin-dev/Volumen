@@ -1112,6 +1112,7 @@ dependencies = [
  "serde",
  "tempfile",
  "thiserror",
+ "tiff 0.9.1",
  "tracing",
  "volumen-core",
 ]
@@ -1124,6 +1125,7 @@ dependencies = [
  "image",
  "indicatif",
  "rayon",
+ "serde",
  "tempfile",
  "thiserror",
  "tiff 0.9.1",
