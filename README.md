@@ -214,6 +214,22 @@ The table below contrasts the legacy reference stack ([`ScrollPrize/villa`](http
 
 *See full report and visual artifacts in [Technical Report 06: Spiral Unrolling Benchmark](doc/06_spiral_unrolling_benchmark.md).*
 
+### Empirical Validation on Real Herculaneum Papyrus (Scroll 1 / PHerc.Paris 4)
+
+*Differential audit against the official Volume Cartographer `vc_render` on authentic European Synchrotron Radiation Facility (ESRF) tomography (`scripts/benchmark_real_scroll1_segment.py`):*
+
+| Evaluation Metric | Official `vc_render` (Reference) | `Volumen` Engine | Concordance Status |
+| :--- | :---: | :---: | :---: |
+| **Volumetric Scan** | ESRF Synchrotron (`54keV_7.91um_Scroll1A`) | ESRF Synchrotron (`54keV_7.91um_Scroll1A`) | Real Tomography |
+| **Segment Mesh** | `20230503225234.obj` (Author: Noemi) | `20230503225234.obj` (Author: Noemi) | Authentic Geometry |
+| **Evaluated Layer** | `layers/32.tif` ($249 \times 85$ px) | True Barycentric Sampling ($249 \times 85$ px) | Center Surface Layer |
+| **Valid Papyrus Pixels** | 16,387 pixels | 16,387 pixels | **100% Exact Contour** |
+| **Pearson Cross-Correlation** | `1.0000` | **`0.9948`** | **Exceptional Concordance** |
+| **Mean Absolute Difference (MAE)** | `0.00` | **`26.97 / 255 (10.6%)`** | High-fidelity agreement |
+
+*See full report in [Technical Report 07: Real Scroll Benchmark](doc/07_real_scroll_benchmark.md).*
+
+
 
 
 ---
