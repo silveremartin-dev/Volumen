@@ -10,6 +10,7 @@ pub struct ZarrMetadata {
     pub chunks: Vec<u64>,
     pub dtype: String,
     pub order: Option<String>,
+    pub compressor: Option<serde_json::Value>,
 }
 
 impl ZarrMetadata {

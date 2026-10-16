@@ -1141,6 +1141,7 @@ name = "volumen-zarr"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "flate2",
  "rayon",
  "serde",
  "serde_json",

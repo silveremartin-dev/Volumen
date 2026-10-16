@@ -41,6 +41,7 @@ impl ZarrVolume {
             chunks: vec![chunk_z, chunk_y, chunk_x],
             dtype: "<u2".to_string(),
             order: Some("C".to_string()),
+            compressor: None,
         };
         Self {
             root_path: PathBuf::from(":memory:"),
@@ -107,13 +108,38 @@ impl ZarrVolume {
 
     fn load_chunk(&self, key: ChunkKey) -> Result<Arc<Chunk3D>> {
         let (cx, cy, cz) = self.metadata.chunk_sizes();
-        // Fallback for memory or missing chunk: return blank chunk
-        Ok(Arc::new(Chunk3D::new_zeros(
-            key,
-            cx as usize,
-            cy as usize,
-            cz as usize,
-        )))
+        let expected_size = (cx * cy * cz) as usize;
+
+        // Try reading chunk from filesystem if root_path exists
+        let chunk_rel_path = key.to_path_string();
+        let chunk_file = self.root_path.join(&chunk_rel_path);
+
+        if chunk_file.exists() {
+            let raw_bytes = std::fs::read(&chunk_file)?;
+            let comp_id = self.metadata.compressor.as_ref().and_then(|c| {
+                c.get("id").and_then(|id| id.as_str())
+            });
+            let voxel_data = crate::decompress::ChunkDecompressor::decompress(
+                &raw_bytes,
+                comp_id,
+                expected_size,
+            )?;
+            Ok(Arc::new(Chunk3D::new(
+                key,
+                cx as usize,
+                cy as usize,
+                cz as usize,
+                voxel_data,
+            )))
+        } else {
+            // Synthetic or empty chunk fallback
+            Ok(Arc::new(Chunk3D::new_zeros(
+                key,
+                cx as usize,
+                cy as usize,
+                cz as usize,
+            )))
+        }
     }
 }
 
