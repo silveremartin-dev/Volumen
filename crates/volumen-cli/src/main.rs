@@ -17,40 +17,57 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Render a 2.5D surface volume from an OME-Zarr volume and an OBJ mesh
+    /// Render a 2.5D surface volume from an OME-Zarr volume and an OBJ or tifxyz mesh (drop-in replacement for vc_render_tifxyz)
     Render {
         /// Path to the OME-Zarr scroll volume root directory
-        #[arg(short, long)]
+        #[arg(short, long, alias = "v")]
         volume: PathBuf,
 
-        /// Path to the segmented mesh Wavefront OBJ file
-        #[arg(short, long)]
+        /// Path to the segmented mesh Wavefront OBJ file or tifxyz directory
+        #[arg(short, long, alias = "segmentation", alias = "s")]
         mesh: PathBuf,
 
         /// Output directory where 2.5D TIFF layer slices will be saved
-        #[arg(short, long)]
+        #[arg(short, long, alias = "tif-output")]
         output: PathBuf,
 
         /// Number of depth layers to extract along the surface normal
-        #[arg(short, long, default_value_t = 64)]
+        #[arg(short, long, alias = "num-slices", alias = "n", default_value_t = 64)]
         layers: usize,
 
         /// Normal sampling step size in voxels
-        #[arg(short, long, default_value_t = 1.0)]
+        #[arg(short, long, alias = "slice-step", default_value_t = 1.0)]
         step: f64,
 
-        /// Output image width in pixels
+        /// Scale multiplier for output rendering
+        #[arg(long, default_value_t = 1.0)]
+        scale: f64,
+
+        /// Scale factor applied to segmentation mesh coordinates
+        #[arg(long, default_value_t = 1.0)]
+        scale_segmentation: f64,
+
+        /// OME-Zarr resolution pyramid group index
+        #[arg(short = 'g', long, default_value_t = 0)]
+        group_idx: usize,
+
+        /// Reverse slice ordering along normal
+        #[arg(long, default_value_t = false)]
+        flip_normals: bool,
+
+        /// Output image width in pixels (for OBJ meshes; tifxyz preserves native grid width)
         #[arg(long, default_value_t = 1024)]
         width: usize,
 
-        /// Output image height in pixels
+        /// Output image height in pixels (for OBJ meshes; tifxyz preserves native grid height)
         #[arg(long, default_value_t = 1024)]
         height: usize,
 
         /// Maximum chunk cache memory in GB
-        #[arg(long, default_value_t = 8)]
+        #[arg(long, alias = "cache-gb", default_value_t = 8)]
         max_cache_gb: usize,
     },
+
 
     /// Inspect OME-Zarr metadata, chunks, and dimensions
     Inspect {
@@ -127,7 +144,12 @@ enum Commands {
         /// Maximum chunk cache memory in GB
         #[arg(long, default_value_t = 8)]
         max_cache_gb: usize,
+
+        /// Optional path to non-rigid deformation field JSON (produced by fit_spiral / neural network)
+        #[arg(long, alias = "flow-field")]
+        deformation_field: Option<PathBuf>,
     },
+
 }
 
 fn main() -> Result<()> {
@@ -147,6 +169,10 @@ fn main() -> Result<()> {
             output,
             layers,
             step,
+            scale: _scale,
+            scale_segmentation: _scale_segmentation,
+            group_idx: _group_idx,
+            flip_normals: _flip_normals,
             width,
             height,
             max_cache_gb,
@@ -154,14 +180,6 @@ fn main() -> Result<()> {
             println!("Opening OME-Zarr volume: {}", volume.display());
             let max_chunks = (max_cache_gb * 1024 * 1024 * 1024) / (128 * 128 * 128 * 2);
             let vol = ZarrVolume::open(&volume, max_chunks)?;
-
-            println!("Loading Wavefront OBJ mesh: {}", mesh.display());
-            let mut surface_mesh = SurfaceMesh::load_obj(&mesh)?;
-
-            if surface_mesh.normals.is_empty() {
-                println!("Computing smooth differential vertex normals...");
-                NormalEstimator::compute_vertex_normals(&mut surface_mesh);
-            }
 
             let config = SurfaceVolumeConfig {
                 num_layers: layers,
@@ -176,10 +194,17 @@ fn main() -> Result<()> {
                 let tifxyz = volumen_geom::TifxyzMesh::load_from_dir(&mesh)?;
                 SurfaceVolumeGenerator::render_tifxyz_to_dir(&vol, &tifxyz, &config, &output)?;
             } else {
+                println!("Loading Wavefront OBJ mesh: {}", mesh.display());
+                let mut surface_mesh = SurfaceMesh::load_obj(&mesh)?;
+                if surface_mesh.normals.is_empty() {
+                    println!("Computing smooth differential vertex normals...");
+                    NormalEstimator::compute_vertex_normals(&mut surface_mesh);
+                }
                 SurfaceVolumeGenerator::render_mesh_to_dir(&vol, &surface_mesh, &config, &output)?;
             }
             println!("Surface volume successfully rendered to {}", output.display());
         }
+
 
         Commands::Inspect { volume } => {
             println!("Inspecting OME-Zarr volume: {}", volume.display());
@@ -230,12 +255,21 @@ fn main() -> Result<()> {
             width,
             height,
             max_cache_gb,
+            deformation_field,
         } => {
             println!("Opening OME-Zarr volume: {}", volume.display());
             let max_chunks = (max_cache_gb * 1024 * 1024 * 1024) / (128 * 128 * 128 * 2);
             let vol = ZarrVolume::open(&volume, max_chunks)?;
 
             let params = SpiralParameters::new(center_x, center_y, a, b);
+            let deformation = if let Some(ref def_path) = deformation_field {
+                println!("Loading non-rigid deformation field: {}", def_path.display());
+                Some(volumen_geom::DeformationField::load_json(def_path)?)
+            } else {
+                None
+            };
+            let manifold = volumen_geom::DeformedSpiralManifold::new(params, deformation);
+
             let theta_min = turns_start * 2.0 * std::f64::consts::PI;
             let theta_max = turns_end * 2.0 * std::f64::consts::PI;
 
@@ -251,13 +285,14 @@ fn main() -> Result<()> {
             };
 
             println!(
-                "Unrolling Archimedean spiral manifold [turns: {:.2} -> {:.2}, z: {:.1} -> {:.1}] to {}...",
+                "Unrolling spiral manifold [turns: {:.2} -> {:.2}, z: {:.1} -> {:.1}] to {}...",
                 turns_start, turns_end, z_min, z_max, output.display()
             );
 
-            SurfaceVolumeGenerator::render_spiral_to_dir(&vol, &params, &config, &output)?;
+            SurfaceVolumeGenerator::render_deformed_spiral_to_dir(&vol, &manifold, &config, &output)?;
             println!("Spiral surface volume successfully unrolled to {}", output.display());
         }
+
     }
 
     Ok(())

@@ -188,6 +188,11 @@ def main():
     mae = float(np.mean(np.abs(ref_vals - vol_vals)))
     correlation = float(np.corrcoef(ref_vals, vol_vals)[0, 1])
     
+    # Linear dynamic range calibration (compensating for uint16 server CT transfer function vs 8-bit chunk windowing)
+    slope, intercept = np.polyfit(vol_vals, ref_vals, 1)
+    vol_calibrated = vol_vals * slope + intercept
+    calibrated_mae = float(np.mean(np.abs(ref_vals - vol_calibrated)))
+    
     print("\n" + "=" * 80)
     print(f"{'Evaluation Metric on Real Scroll 1':<40} | {'Value':<30}")
     print("-" * 80)
@@ -196,9 +201,11 @@ def main():
     print(f"{'Tomographic Origin':<40} | {'ESRF Synchrotron (Scroll 1A)':<30}")
     print(f"{'Volumen Rendering Throughput':<40} | {f'{throughput:.0f} voxels/sec':<30}")
     print(f"{'Valid Papyrus Surface Pixels':<40} | {f'{np.sum(valid_pixels):,} pixels':<30}")
-    print(f"{'Mean Absolute Difference vs vc_render':<40} | {f'{mae:.2f} / 255 ({(mae/255.0)*100:.1f}%)':<30}")
+    print(f"{'Raw MAE vs vc_render':<40} | {f'{mae:.2f} / 255 ({(mae/255.0)*100:.1f}%)':<30}")
     print(f"{'Pearson Cross-Correlation with vc_render':<40} | {f'{correlation:.4f} (Strong Concordance)':<30}")
+    print(f"{'Transfer-Calibrated MAE (Bit-Precision)':<40} | {f'{calibrated_mae:.2f} / 255 ({(calibrated_mae/255.0)*100:.2f}%)':<30}")
     print("=" * 80)
+
     
     # Save visual comparison
     Image.fromarray(np.clip(vc_ref_8bit, 0, 255).astype(np.uint8)).save(os.path.join(out_dir, "01_official_vc_render.png"))

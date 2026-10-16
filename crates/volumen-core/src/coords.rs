@@ -139,6 +139,16 @@ impl std::ops::Mul<f64> for Vec3D {
     }
 }
 
+impl std::ops::Add<Vec3D> for Vec3D {
+    type Output = Vec3D;
+
+    #[inline]
+    fn add(self, rhs: Vec3D) -> Vec3D {
+        Vec3D::new(self.x + rhs.x, self.y + rhs.y, self.z + rhs.z)
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

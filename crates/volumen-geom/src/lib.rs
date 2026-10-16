@@ -9,5 +9,6 @@ pub use affine::AffineTransform;
 pub use barycentric::{compute_barycentric_2d, UVSpatialIndex};
 pub use mesh::{Face, SurfaceMesh, Vertex, UV};
 pub use normal::NormalEstimator;
-pub use spiral::{SpiralParameters, SpiralUnroller};
+pub use spiral::{DeformationField, DeformedSpiralManifold, SpiralParameters, SpiralUnroller};
 pub use tifxyz::TifxyzMesh;
+

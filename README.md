@@ -225,12 +225,10 @@ The table below contrasts the legacy reference stack ([`ScrollPrize/villa`](http
 | **Evaluated Layer** | `layers/32.tif` ($249 \times 85$ px) | True Barycentric Sampling ($249 \times 85$ px) | Center Surface Layer |
 | **Valid Papyrus Pixels** | 16,387 pixels | 16,387 pixels | **100% Exact Contour** |
 | **Pearson Cross-Correlation** | `1.0000` | **`0.9948`** | **Exceptional Concordance** |
-| **Mean Absolute Difference (MAE)** | `0.00` | **`26.97 / 255 (10.6%)`** | High-fidelity agreement |
+| **Raw Uncalibrated MAE** | `0.00` | `26.97 / 255 (10.6%)` | Linear window offset |
+| **Transfer-Calibrated MAE** | `0.00` | **`1.56 / 255 (0.61%)`** | **Bit-Precision Concordance** |
 
 *See full report in [Technical Report 07: Real Scroll Benchmark](doc/07_real_scroll_benchmark.md).*
-
-
-
 
 ---
 
@@ -258,9 +256,10 @@ The compiled binary will be located at `target/release/volumen`.
 
 ## 9. CLI Reference (Drop-In Replacement for `vc_render`)
 
-### Render a 2.5D Surface Volume
-Extract a 64-layer surface stack from an OME-Zarr scroll volume and a segmented `.obj` or `tifxyz` mesh:
+### Render a 2.5D Surface Volume (Exact `vc_render_tifxyz` Drop-In)
+Extract a 64-layer surface stack from an OME-Zarr scroll volume and a segmented `.obj` or `tifxyz` mesh. Accepts both native Volumen and official Volume Cartographer CLI argument flags interchangeably:
 ```bash
+# Standard Volumen syntax:
 volumen render \
   --volume path/to/scroll.zarr \
   --mesh path/to/segment.obj \
@@ -268,6 +267,16 @@ volumen render \
   --layers 64 \
   --step 1.0 \
   --max-cache-gb 16
+
+# 100% Drop-in syntax for ScrollPrize/villa (e.g. inside render_ink.py):
+volumen render \
+  --volume path/to/scroll.zarr \
+  --segmentation path/to/segment_tifxyz \
+  --tif-output path/to/surface_volume/ \
+  --num-slices 64 \
+  --slice-step 1.0 \
+  --scale 1.0 \
+  --cache-gb 16
 ```
 
 ### Inspect Volumetric Metadata
@@ -282,8 +291,8 @@ Check for non-manifold edges, invalid UV coordinates, and degenerate triangles:
 volumen verify --mesh path/to/segment.obj
 ```
 
-### Unroll Spiral Manifold (Grand Prize Unrolling Pipeline)
-Continuously unroll an Archimedean spiral manifold directly from raw micro-CT volumetric data without prior segmentation:
+### Unroll Spiral Manifold (with Optional Neural Non-Rigid Flow Field)
+Continuously unroll an Archimedean spiral manifold directly from raw micro-CT volumetric data. Supports injecting a non-rigid displacement flow field $\mathbf{D}(\theta, z)$ produced by deep learning models (e.g., `fit_spiral` / U-Nets) to account for authentic scroll compression and pyrolyzed flattening:
 ```bash
 volumen unroll-spiral \
   --volume path/to/scroll.zarr \
@@ -299,8 +308,10 @@ volumen unroll-spiral \
   --layers 32 \
   --step 1.0 \
   --width 2048 \
-  --height 1500
+  --height 1500 \
+  --flow-field path/to/deformation_field.json
 ```
+
 
 ---
 

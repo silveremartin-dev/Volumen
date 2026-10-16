@@ -130,3 +130,54 @@ fn test_spiral_surface_volume_render_end_to_end() {
         assert!(slice_path.exists(), "Layer slice {:02}.tif must exist", layer);
     }
 }
+
+#[test]
+fn test_deformed_spiral_surface_volume_render() {
+    use volumen_core::Vec3D;
+    use volumen_geom::{DeformationField, DeformedSpiralManifold};
+
+    let dir = tempdir().expect("Failed to create tempdir");
+    let vol = ZarrVolume::new_synthetic(128, 128, 64, 64, 64, 64);
+
+    let params = SpiralParameters::new(64.0, 64.0, 15.0, 2.0);
+
+    // Create a 2x2 displacement field simulating scroll ovalization/flattening
+    let disp = vec![
+        Vec3D::new(2.0, -1.0, 0.0),
+        Vec3D::new(-2.0, 1.0, 0.0),
+        Vec3D::new(2.0, -1.0, 0.0),
+        Vec3D::new(-2.0, 1.0, 0.0),
+    ];
+    let field = DeformationField::new(
+        0.5 * std::f64::consts::PI,
+        2.0 * std::f64::consts::PI,
+        10.0,
+        30.0,
+        2,
+        2,
+        disp,
+    )
+    .unwrap();
+
+    let manifold = DeformedSpiralManifold::new(params, Some(field));
+
+    let config = SpiralUnrollConfig {
+        theta_min: 0.5 * std::f64::consts::PI,
+        theta_max: 2.0 * std::f64::consts::PI,
+        z_min: 10.0,
+        z_max: 30.0,
+        width: 64,
+        height: 32,
+        num_layers: 5,
+        step_size: 1.0,
+    };
+
+    SurfaceVolumeGenerator::render_deformed_spiral_to_dir(&vol, &manifold, &config, dir.path())
+        .expect("Deformed spiral render must succeed");
+
+    for layer in 0..5 {
+        let slice_path = dir.path().join(format!("{:02}.tif", layer));
+        assert!(slice_path.exists(), "Deformed layer slice {:02}.tif must exist", layer);
+    }
+}
+

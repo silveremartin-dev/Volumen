@@ -180,10 +180,21 @@ impl SurfaceVolumeGenerator {
     }
 
     /// Renders an unrolled surface volume directly from an analytical 3D Archimedean spiral manifold.
-    /// This bypasses mesh tracing artifacts and prevents sheet switches in pyrolyzed sections.
     pub fn render_spiral_to_dir<P: AsRef<Path>>(
         volume: &ZarrVolume,
         params: &volumen_geom::SpiralParameters,
+        config: &SpiralUnrollConfig,
+        output_dir: P,
+    ) -> Result<()> {
+        let manifold = volumen_geom::DeformedSpiralManifold::new(*params, None);
+        Self::render_deformed_spiral_to_dir(volume, &manifold, config, output_dir)
+    }
+
+    /// Renders an unrolled surface volume directly from an analytical or non-rigidly deformed
+    /// Archimedean spiral manifold. This accounts for real carbonized scroll compression and local warping.
+    pub fn render_deformed_spiral_to_dir<P: AsRef<Path>>(
+        volume: &ZarrVolume,
+        manifold: &volumen_geom::DeformedSpiralManifold,
         config: &SpiralUnrollConfig,
         output_dir: P,
     ) -> Result<()> {
@@ -194,13 +205,14 @@ impl SurfaceVolumeGenerator {
         let half_layers = (num_layers as f64 - 1.0) / 2.0;
 
         tracing::info!(
-            "Unrolling spiral manifold: theta=[{:.2}, {:.2}], z=[{:.2}, {:.2}], {} layers to {}",
+            "Unrolling spiral manifold: theta=[{:.2}, {:.2}], z=[{:.2}, {:.2}], {} layers to {} (non-rigid deformation: {})",
             config.theta_min,
             config.theta_max,
             config.z_min,
             config.z_max,
             num_layers,
-            out_path.display()
+            out_path.display(),
+            manifold.deformation.is_some()
         );
 
         let d_theta = if config.width > 1 {
@@ -215,16 +227,18 @@ impl SurfaceVolumeGenerator {
             0.0
         };
 
-        // Precompute (point_0, normal) per column x to avoid repeating trig calculations across z and layers
-        let columns: Vec<(f64, volumen_core::Vec3D, f64, f64)> = (0..config.width)
+        // Precompute grid points and normals across (width, height)
+        let total_pixels = config.width * config.height;
+        let grid_pts_normals: Vec<(volumen_core::Point3D, volumen_core::Vec3D)> = (0..total_pixels)
             .into_par_iter()
-            .map(|x| {
+            .map(|idx| {
+                let x = idx % config.width;
+                let y = idx / config.width;
                 let theta = config.theta_min + (x as f64) * d_theta;
-                let r = params.radius_at(theta);
-                let normal = params.normal_at(theta);
-                let cos_t = theta.cos();
-                let sin_t = theta.sin();
-                (r, normal, cos_t, sin_t)
+                let z = config.z_min + (y as f64) * d_z;
+                let base_pt = manifold.point_at(theta, z);
+                let normal = manifold.normal_at(theta, z);
+                (base_pt, normal)
             })
             .collect();
 
@@ -236,17 +250,12 @@ impl SurfaceVolumeGenerator {
                 .par_chunks_mut(config.width)
                 .enumerate()
                 .for_each(|(y, row)| {
-                    let z = config.z_min + (y as f64) * d_z;
+                    let y_offset = y * config.width;
                     for (x, pixel) in row.iter_mut().enumerate() {
-                        let (r, normal, cos_t, sin_t) = columns[x];
-                        let base_pt = volumen_core::Point3D::new(
-                            params.center_x + r * cos_t,
-                            params.center_y + r * sin_t,
-                            z,
-                        );
+                        let (base_pt, normal) = grid_pts_normals[y_offset + x];
                         let ray_pt = base_pt + (normal * offset);
                         let intensity = TrilinearSampler::sample(volume, &ray_pt);
-                        *pixel = intensity.clamp(0.0, 65535.0) as u16;
+                        *pixel = intensity.round().clamp(0.0, 65535.0) as u16;
                     }
                 });
 
@@ -258,6 +267,7 @@ impl SurfaceVolumeGenerator {
         Ok(())
     }
 }
+
 
 fn estimate_grid_normal(mesh: &TifxyzMesh, x: usize, y: usize) -> Vec3D {
     let p_c = mesh.get_point(x, y).unwrap_or(volumen_core::Point3D::new(0.0, 0.0, 0.0));
