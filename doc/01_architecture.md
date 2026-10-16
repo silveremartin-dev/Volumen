@@ -12,9 +12,11 @@ Historically, the pipeline relied on disparate tools connected by shell scripts:
 This architecture causes:
 - **I/O Choke Points**: Disk transfer saturation caused by millions of individual files.
 - **Memory Spikes**: Lack of bounded out-of-core caches leading to worker crashes.
-- **Fragile Integration**: Inconsistent coordinate transformations between voxel indices, physical metric space, and UV texture domains.
-
 `Volumen` replaces this disparate toolchain with a cohesive, high-performance Rust ecosystem designed around strict memory bounds, unified coordinate spaces, and parallel SIMD operations.
+
+It is structured around **two complementary tools**:
+1. **Tool 1: `volumen render` (Discrete Virtual Unwrapping Core)**: Ray-casts multi-layer 2.5D surface volumes along the normal field of segmented Wavefront OBJ meshes or VC3D `tifxyz` regular quad lattices. Direct drop-in replacement for legacy C++ `vc_render`.
+2. **Tool 2: `volumen unroll-spiral` (Continuous Spiral Unrolling Engine)**: Evaluates the continuous Archimedean manifold projection and analytical differential normal field to unroll whole scrolls in a single out-of-core pass without requiring prior discrete mesh segmentation.
 
 ---
 
