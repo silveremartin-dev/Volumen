@@ -11,4 +11,3 @@ pub use mesh::{Face, SurfaceMesh, Vertex, UV};
 pub use normal::NormalEstimator;
 pub use spiral::{DeformationField, DeformedSpiralManifold, SpiralParameters, SpiralUnroller};
 pub use tifxyz::TifxyzMesh;
-

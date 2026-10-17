@@ -10,8 +10,8 @@ use volumen_core::{Point3D, Result, Vec3D, VolumenError};
 pub struct SpiralParameters {
     pub center_x: f64,
     pub center_y: f64,
-    pub a: f64,          // Base core radius
-    pub b: f64,          // Radial spacing between successive windings (thickness of papyrus wrap)
+    pub a: f64,              // Base core radius
+    pub b: f64, // Radial spacing between successive windings (thickness of papyrus wrap)
     pub pitch_per_turn: f64, // 2 * pi * b
 }
 
@@ -111,8 +111,8 @@ pub struct DeformationField {
     pub theta_max: f64,
     pub z_min: f64,
     pub z_max: f64,
-    pub width: usize,   // Number of theta steps
-    pub height: usize,  // Number of z steps
+    pub width: usize,              // Number of theta steps
+    pub height: usize,             // Number of z steps
     pub displacements: Vec<Vec3D>, // Row-major: displacements[y * width + x]
 }
 
@@ -149,8 +149,9 @@ impl DeformationField {
     pub fn load_json<P: AsRef<Path>>(path: P) -> Result<Self> {
         let file = File::open(path.as_ref())?;
         let reader = BufReader::new(file);
-        let field: Self = serde_json::from_reader(reader)
-            .map_err(|e| VolumenError::MeshParse(format!("Failed to parse deformation JSON: {}", e)))?;
+        let field: Self = serde_json::from_reader(reader).map_err(|e| {
+            VolumenError::MeshParse(format!("Failed to parse deformation JSON: {}", e))
+        })?;
         Ok(field)
     }
 
@@ -222,13 +223,18 @@ impl DeformationField {
     #[inline]
     pub fn sample(&self, theta: f64, z: f64) -> Vec3D {
         if self.width <= 1 || self.height <= 1 {
-            return self.displacements.first().copied().unwrap_or(Vec3D::new(0.0, 0.0, 0.0));
+            return self
+                .displacements
+                .first()
+                .copied()
+                .unwrap_or(Vec3D::new(0.0, 0.0, 0.0));
         }
 
         let u = ((theta - self.theta_min) / (self.theta_max - self.theta_min).max(1e-12))
-            .clamp(0.0, 1.0) * (self.width - 1) as f64;
-        let v = ((z - self.z_min) / (self.z_max - self.z_min).max(1e-12))
-            .clamp(0.0, 1.0) * (self.height - 1) as f64;
+            .clamp(0.0, 1.0)
+            * (self.width - 1) as f64;
+        let v = ((z - self.z_min) / (self.z_max - self.z_min).max(1e-12)).clamp(0.0, 1.0)
+            * (self.height - 1) as f64;
 
         let x0 = (u.floor() as usize).min(self.width - 2);
         let y0 = (v.floor() as usize).min(self.height - 2);
@@ -318,14 +324,15 @@ impl DeformedSpiralManifold {
     }
 }
 
-
 fn read_tiff_channel<P: AsRef<Path>>(path: P) -> Result<(usize, usize, Vec<f64>)> {
     let file = File::open(path.as_ref())?;
-    let mut decoder = tiff::decoder::Decoder::new(file)
+    let mut decoder =
+        tiff::decoder::Decoder::new(file).map_err(|e| VolumenError::Tiff(e.to_string()))?;
+    let (w, h) = decoder
+        .dimensions()
         .map_err(|e| VolumenError::Tiff(e.to_string()))?;
-    let (w, h) = decoder.dimensions()
-        .map_err(|e| VolumenError::Tiff(e.to_string()))?;
-    let result = decoder.read_image()
+    let result = decoder
+        .read_image()
         .map_err(|e| VolumenError::Tiff(e.to_string()))?;
     let values: Vec<f64> = match result {
         tiff::decoder::DecodingResult::F32(v) => v.into_iter().map(|x| x as f64).collect(),
@@ -333,7 +340,12 @@ fn read_tiff_channel<P: AsRef<Path>>(path: P) -> Result<(usize, usize, Vec<f64>)
         tiff::decoder::DecodingResult::U16(v) => v.into_iter().map(|x| x as f64).collect(),
         tiff::decoder::DecodingResult::I16(v) => v.into_iter().map(|x| x as f64).collect(),
         tiff::decoder::DecodingResult::U8(v) => v.into_iter().map(|x| x as f64).collect(),
-        other => return Err(VolumenError::Tiff(format!("Unsupported TIFF format for deformation channel: {:?}", other))),
+        other => {
+            return Err(VolumenError::Tiff(format!(
+                "Unsupported TIFF format for deformation channel: {:?}",
+                other
+            )))
+        }
     };
     Ok((w as usize, h as usize, values))
 }
@@ -381,4 +393,3 @@ mod tests {
         assert!(normal.length() > 0.999 && normal.length() < 1.001);
     }
 }
-

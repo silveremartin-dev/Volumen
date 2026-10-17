@@ -27,7 +27,10 @@ impl ZarrVolume {
     /// Opens an OME-Zarr array from a local directory or remote S3 / HTTP URL.
     pub fn open_auto(path_or_url: &str, max_cached_chunks: usize) -> Result<Self> {
         let trimmed = path_or_url.trim();
-        if trimmed.starts_with("s3://") || trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+        if trimmed.starts_with("s3://")
+            || trimmed.starts_with("http://")
+            || trimmed.starts_with("https://")
+        {
             Self::open_remote(trimmed, max_cached_chunks)
         } else {
             Self::open(trimmed, max_cached_chunks)
@@ -99,21 +102,20 @@ impl ZarrVolume {
     pub fn insert_chunk(&self, chunk: Chunk3D) {
         let mut cache = self.cache.write().unwrap();
         let tick = self.access_counter.fetch_add(1, Ordering::Relaxed);
-        cache.insert(chunk.key, CacheItem {
-            chunk: Arc::new(chunk),
-            last_access: tick,
-        });
+        cache.insert(
+            chunk.key,
+            CacheItem {
+                chunk: Arc::new(chunk),
+                last_access: tick,
+            },
+        );
     }
 
     /// Resolves which chunk contains the given discrete voxel coordinate.
     #[inline]
     pub fn voxel_to_chunk(&self, voxel: &VoxelCoord) -> (ChunkKey, usize, usize, usize) {
         let (cx_size, cy_size, cz_size) = self.metadata.chunk_sizes();
-        let key = ChunkKey::new(
-            voxel.x / cx_size,
-            voxel.y / cy_size,
-            voxel.z / cz_size,
-        );
+        let key = ChunkKey::new(voxel.x / cx_size, voxel.y / cy_size, voxel.z / cz_size);
         let ox = (voxel.x % cx_size) as usize;
         let oy = (voxel.y % cy_size) as usize;
         let oz = (voxel.z % cz_size) as usize;
@@ -147,18 +149,16 @@ impl ZarrVolume {
         // Slow path: load chunk (from disk, remote S3/HTTP, or synthetic)
         let chunk = self.load_chunk(key)?;
         let val = chunk.get(ox, oy, oz).unwrap_or(0);
-        
+
         {
             let mut cache = self.cache.write().unwrap();
             let tick = self.access_counter.fetch_add(1, Ordering::Relaxed);
-            
+
             // LRU eviction if cache exceeds capacity
             if cache.len() >= self.max_cached_chunks && self.max_cached_chunks > 0 {
                 // Remove oldest 25% of entries
-                let mut entries: Vec<(ChunkKey, u64)> = cache
-                    .iter()
-                    .map(|(k, v)| (*k, v.last_access))
-                    .collect();
+                let mut entries: Vec<(ChunkKey, u64)> =
+                    cache.iter().map(|(k, v)| (*k, v.last_access)).collect();
                 entries.sort_unstable_by_key(|&(_, t)| t);
                 let remove_count = (cache.len() / 4).max(1);
                 for (old_key, _) in entries.iter().take(remove_count) {
@@ -166,10 +166,13 @@ impl ZarrVolume {
                 }
             }
 
-            cache.insert(key, CacheItem {
-                chunk,
-                last_access: tick,
-            });
+            cache.insert(
+                key,
+                CacheItem {
+                    chunk,
+                    last_access: tick,
+                },
+            );
         }
 
         Ok(val)
@@ -183,9 +186,11 @@ impl ZarrVolume {
     fn load_chunk(&self, key: ChunkKey) -> Result<Arc<Chunk3D>> {
         let (cx, cy, cz) = self.metadata.chunk_sizes();
         let expected_size = (cx * cy * cz) as usize;
-        let comp_id = self.metadata.compressor.as_ref().and_then(|c| {
-            c.get("id").and_then(|id| id.as_str())
-        });
+        let comp_id = self
+            .metadata
+            .compressor
+            .as_ref()
+            .and_then(|c| c.get("id").and_then(|id| id.as_str()));
 
         if self.is_remote {
             let chunk_rel_path = key.to_path_string();

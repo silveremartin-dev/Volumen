@@ -17,7 +17,8 @@ impl ChunkDecompressor {
             Some("gzip") | Some("zlib") => {
                 let mut decoder = GzDecoder::new(raw_bytes);
                 let mut buffer = Vec::with_capacity(expected_elements * 2);
-                decoder.read_to_end(&mut buffer)
+                decoder
+                    .read_to_end(&mut buffer)
                     .map_err(|e| VolumenError::Zarr(format!("Gzip decompression failed: {}", e)))?;
                 buffer
             }
@@ -43,8 +44,9 @@ impl ChunkDecompressor {
 
         // Convert little-endian bytes to u16
         let mut u16_data = Vec::with_capacity(expected_elements);
-        for chunk in decompressed_bytes[..expected_elements * 2].chunks_exact(2) {
-            u16_data.push(u16::from_le_bytes([chunk[0], chunk[1]]));
+        let (chunks, _) = decompressed_bytes[..expected_elements * 2].as_chunks::<2>();
+        for chunk in chunks {
+            u16_data.push(u16::from_le_bytes(*chunk));
         }
 
         Ok(u16_data)

@@ -24,10 +24,14 @@ impl UVSpatialIndex {
                 let min_v = uv0.v.min(uv1.v).min(uv2.v).clamp(0.0, 1.0);
                 let max_v = uv0.v.max(uv1.v).max(uv2.v).clamp(0.0, 1.0);
 
-                let cu_min = ((min_u * (grid_res as f64 - 1e-5)).floor() as usize).min(grid_res - 1);
-                let cu_max = ((max_u * (grid_res as f64 - 1e-5)).floor() as usize).min(grid_res - 1);
-                let cv_min = ((min_v * (grid_res as f64 - 1e-5)).floor() as usize).min(grid_res - 1);
-                let cv_max = ((max_v * (grid_res as f64 - 1e-5)).floor() as usize).min(grid_res - 1);
+                let cu_min =
+                    ((min_u * (grid_res as f64 - 1e-5)).floor() as usize).min(grid_res - 1);
+                let cu_max =
+                    ((max_u * (grid_res as f64 - 1e-5)).floor() as usize).min(grid_res - 1);
+                let cv_min =
+                    ((min_v * (grid_res as f64 - 1e-5)).floor() as usize).min(grid_res - 1);
+                let cv_max =
+                    ((max_v * (grid_res as f64 - 1e-5)).floor() as usize).min(grid_res - 1);
 
                 for cv in cv_min..=cv_max {
                     for cu in cu_min..=cu_max {
@@ -41,12 +45,7 @@ impl UVSpatialIndex {
     }
 
     /// Finds the 3D surface point and interpolated unit normal for any continuous (u, v) coordinate.
-    pub fn sample_surface(
-        &self,
-        mesh: &SurfaceMesh,
-        u: f64,
-        v: f64,
-    ) -> Option<(Point3D, Vec3D)> {
+    pub fn sample_surface(&self, mesh: &SurfaceMesh, u: f64, v: f64) -> Option<(Point3D, Vec3D)> {
         if u < 0.0 || u > 1.0 || v < 0.0 || v > 1.0 {
             return None;
         }
@@ -76,15 +75,29 @@ impl UVSpatialIndex {
                     );
 
                     // Interpolate normal vector
-                    let n0 = mesh.normals.get(face.v[0]).copied().unwrap_or(Vec3D::new(0.0, 0.0, 1.0));
-                    let n1 = mesh.normals.get(face.v[1]).copied().unwrap_or(Vec3D::new(0.0, 0.0, 1.0));
-                    let n2 = mesh.normals.get(face.v[2]).copied().unwrap_or(Vec3D::new(0.0, 0.0, 1.0));
+                    let n0 = mesh
+                        .normals
+                        .get(face.v[0])
+                        .copied()
+                        .unwrap_or(Vec3D::new(0.0, 0.0, 1.0));
+                    let n1 = mesh
+                        .normals
+                        .get(face.v[1])
+                        .copied()
+                        .unwrap_or(Vec3D::new(0.0, 0.0, 1.0));
+                    let n2 = mesh
+                        .normals
+                        .get(face.v[2])
+                        .copied()
+                        .unwrap_or(Vec3D::new(0.0, 0.0, 1.0));
 
                     let normal = Vec3D::new(
                         w0 * n0.x + w1 * n1.x + w2 * n2.x,
                         w0 * n0.y + w1 * n1.y + w2 * n2.y,
                         w0 * n0.z + w1 * n2.z + w2 * n2.z,
-                    ).normalize().unwrap_or(Vec3D::new(0.0, 0.0, 1.0));
+                    )
+                    .normalize()
+                    .unwrap_or(Vec3D::new(0.0, 0.0, 1.0));
 
                     return Some((pos, normal));
                 }
@@ -98,13 +111,7 @@ impl UVSpatialIndex {
 /// Evaluates 2D barycentric weights (w0, w1, w2) for point (u, v) in triangle (a, b, c).
 /// Returns Some((w0, w1, w2)) if (u, v) is inside triangle, else None.
 #[inline]
-pub fn compute_barycentric_2d(
-    u: f64,
-    v: f64,
-    a: &UV,
-    b: &UV,
-    c: &UV,
-) -> Option<(f64, f64, f64)> {
+pub fn compute_barycentric_2d(u: f64, v: f64, a: &UV, b: &UV, c: &UV) -> Option<(f64, f64, f64)> {
     let det = (b.v - c.v) * (a.u - c.u) + (c.u - b.u) * (a.v - c.v);
     if det.abs() < 1e-12 {
         return None;

@@ -6,8 +6,8 @@ use volumen_core::Result;
 /// High-performance writer for chunked OME-Zarr arrays.
 pub struct ZarrWriter {
     pub root_dir: PathBuf,
-    pub shape: [u64; 3],   // [dim_z, dim_y, dim_x]
-    pub chunks: [u64; 3],  // [chunk_z, chunk_y, chunk_x]
+    pub shape: [u64; 3],  // [dim_z, dim_y, dim_x]
+    pub chunks: [u64; 3], // [chunk_z, chunk_y, chunk_x]
 }
 
 impl ZarrWriter {
@@ -55,12 +55,7 @@ impl ZarrWriter {
 
     /// Writes all layers of an extracted surface volume directly into chunked Zarr format.
     /// Slices are provided as a slice of 2D buffers (each of size `width * height`).
-    pub fn write_slices(
-        &self,
-        slices: &[Vec<u16>],
-        width: usize,
-        height: usize,
-    ) -> Result<()> {
+    pub fn write_slices(&self, slices: &[Vec<u16>], width: usize, height: usize) -> Result<()> {
         let num_layers = slices.len();
         if num_layers == 0 {
             return Ok(());
@@ -70,9 +65,9 @@ impl ZarrWriter {
         let cy_size = self.chunks[1] as usize;
         let cx_size = self.chunks[2] as usize;
 
-        let num_cz = (num_layers + cz_size - 1) / cz_size;
-        let num_cy = (height + cy_size - 1) / cy_size;
-        let num_cx = (width + cx_size - 1) / cx_size;
+        let num_cz = num_layers.div_ceil(cz_size);
+        let num_cy = height.div_ceil(cy_size);
+        let num_cx = width.div_ceil(cx_size);
 
         for cz in 0..num_cz {
             let z_start = cz * cz_size;
@@ -88,17 +83,15 @@ impl ZarrWriter {
 
                     let mut chunk_buffer = vec![0u16; cz_size * cy_size * cx_size];
 
-                    for z in z_start..z_end {
-                        let z_local = z - z_start;
-                        let slice = &slices[z];
-
+                    for (z_local, slice) in slices[z_start..z_end].iter().enumerate() {
                         for y in y_start..y_end {
                             let y_local = y - y_start;
                             let row_offset = y * width;
 
                             for x in x_start..x_end {
                                 let x_local = x - x_start;
-                                let chunk_idx = z_local * (cy_size * cx_size) + y_local * cx_size + x_local;
+                                let chunk_idx =
+                                    z_local * (cy_size * cx_size) + y_local * cx_size + x_local;
                                 chunk_buffer[chunk_idx] = slice[row_offset + x];
                             }
                         }

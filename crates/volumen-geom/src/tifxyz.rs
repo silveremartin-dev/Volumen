@@ -76,16 +76,17 @@ impl TifxyzMesh {
 
 fn read_tiff_f32(path: &Path) -> Result<(usize, usize, Vec<f32>)> {
     let file = File::open(path)?;
-    let mut decoder = Decoder::new(file)
-        .map_err(|e| VolumenError::Tiff(format!("Failed to open TIFF {}: {}", path.display(), e)))?;
+    let mut decoder = Decoder::new(file).map_err(|e| {
+        VolumenError::Tiff(format!("Failed to open TIFF {}: {}", path.display(), e))
+    })?;
 
     let (w, h) = decoder
         .dimensions()
         .map_err(|e| VolumenError::Tiff(e.to_string()))?;
 
-    let result = decoder
-        .read_image()
-        .map_err(|e| VolumenError::Tiff(format!("Failed to decode TIFF {}: {}", path.display(), e)))?;
+    let result = decoder.read_image().map_err(|e| {
+        VolumenError::Tiff(format!("Failed to decode TIFF {}: {}", path.display(), e))
+    })?;
 
     match result {
         DecodingResult::F32(data) => Ok((w as usize, h as usize, data)),

@@ -148,7 +148,6 @@ impl std::ops::Add<Vec3D> for Vec3D {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

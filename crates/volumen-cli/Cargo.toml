@@ -10,6 +10,10 @@ description = "High-performance CLI tools for Vesuvius scroll rendering, surface
 name = "volumen"
 path = "src/main.rs"
 
+[[bin]]
+name = "vc_render"
+path = "src/vc_render_shim.rs"
+
 [dependencies]
 volumen-core.workspace = true
 volumen-zarr.workspace = true

@@ -34,15 +34,31 @@ impl TrilinearSampler {
         let dz = p.z - p.z.floor();
 
         // Query the 8 corners of the unit voxel cube
-        let v000 = volume.get_voxel(&VoxelCoord::new(ux0, uy0, uz0)).unwrap_or(0) as f64;
-        let v100 = volume.get_voxel(&VoxelCoord::new(ux0 + 1, uy0, uz0)).unwrap_or(0) as f64;
-        let v010 = volume.get_voxel(&VoxelCoord::new(ux0, uy0 + 1, uz0)).unwrap_or(0) as f64;
-        let v110 = volume.get_voxel(&VoxelCoord::new(ux0 + 1, uy0 + 1, uz0)).unwrap_or(0) as f64;
+        let v000 = volume
+            .get_voxel(&VoxelCoord::new(ux0, uy0, uz0))
+            .unwrap_or(0) as f64;
+        let v100 = volume
+            .get_voxel(&VoxelCoord::new(ux0 + 1, uy0, uz0))
+            .unwrap_or(0) as f64;
+        let v010 = volume
+            .get_voxel(&VoxelCoord::new(ux0, uy0 + 1, uz0))
+            .unwrap_or(0) as f64;
+        let v110 = volume
+            .get_voxel(&VoxelCoord::new(ux0 + 1, uy0 + 1, uz0))
+            .unwrap_or(0) as f64;
 
-        let v001 = volume.get_voxel(&VoxelCoord::new(ux0, uy0, uz0 + 1)).unwrap_or(0) as f64;
-        let v101 = volume.get_voxel(&VoxelCoord::new(ux0 + 1, uy0, uz0 + 1)).unwrap_or(0) as f64;
-        let v011 = volume.get_voxel(&VoxelCoord::new(ux0, uy0 + 1, uz0 + 1)).unwrap_or(0) as f64;
-        let v111 = volume.get_voxel(&VoxelCoord::new(ux0 + 1, uy0 + 1, uz0 + 1)).unwrap_or(0) as f64;
+        let v001 = volume
+            .get_voxel(&VoxelCoord::new(ux0, uy0, uz0 + 1))
+            .unwrap_or(0) as f64;
+        let v101 = volume
+            .get_voxel(&VoxelCoord::new(ux0 + 1, uy0, uz0 + 1))
+            .unwrap_or(0) as f64;
+        let v011 = volume
+            .get_voxel(&VoxelCoord::new(ux0, uy0 + 1, uz0 + 1))
+            .unwrap_or(0) as f64;
+        let v111 = volume
+            .get_voxel(&VoxelCoord::new(ux0 + 1, uy0 + 1, uz0 + 1))
+            .unwrap_or(0) as f64;
 
         // Trilinear blending
         let c00 = v000 * (1.0 - dx) + v100 * dx;

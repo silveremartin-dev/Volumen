@@ -59,6 +59,10 @@ enum Commands {
         #[arg(long, default_value_t = false)]
         flip_normals: bool,
 
+        /// Automatically snap and center layer 32 on the physical papyrus sheet density
+        #[arg(long, default_value_t = false)]
+        auto_center: bool,
+
         /// Output image width in pixels (for OBJ meshes; tifxyz preserves native grid width)
         #[arg(long, default_value_t = 1024)]
         width: usize,
@@ -71,7 +75,6 @@ enum Commands {
         #[arg(long, alias = "cache-gb", default_value_t = 8)]
         max_cache_gb: usize,
     },
-
 
     /// Inspect OME-Zarr metadata, chunks, and dimensions
     Inspect {
@@ -157,7 +160,6 @@ enum Commands {
         #[arg(long, alias = "flow-field")]
         deformation_field: Option<PathBuf>,
     },
-
 }
 
 fn main() -> Result<()> {
@@ -182,6 +184,7 @@ fn main() -> Result<()> {
             scale_segmentation: _scale_segmentation,
             group_idx: _group_idx,
             flip_normals,
+            auto_center,
             width,
             height,
             max_cache_gb,
@@ -197,6 +200,7 @@ fn main() -> Result<()> {
                 height,
                 affine: None,
                 flip_normals,
+                auto_center,
             };
 
             let out_tiff = output.or_else(|| {
@@ -212,7 +216,10 @@ fn main() -> Result<()> {
                 let tifxyz = volumen_geom::TifxyzMesh::load_from_dir(&mesh)?;
                 if let Some(ref out_dir) = out_tiff {
                     SurfaceVolumeGenerator::render_tifxyz_to_dir(&vol, &tifxyz, &config, out_dir)?;
-                    println!("Surface volume TIFFs successfully rendered to {}", out_dir.display());
+                    println!(
+                        "Surface volume TIFFs successfully rendered to {}",
+                        out_dir.display()
+                    );
                 }
             } else {
                 println!("Loading Wavefront OBJ mesh: {}", mesh.display());
@@ -222,12 +229,28 @@ fn main() -> Result<()> {
                     NormalEstimator::compute_vertex_normals(&mut surface_mesh);
                 }
                 if let Some(ref out_dir) = out_tiff {
-                    SurfaceVolumeGenerator::render_mesh_to_dir(&vol, &surface_mesh, &config, out_dir)?;
-                    println!("Surface volume TIFFs successfully rendered to {}", out_dir.display());
+                    SurfaceVolumeGenerator::render_mesh_to_dir(
+                        &vol,
+                        &surface_mesh,
+                        &config,
+                        out_dir,
+                    )?;
+                    println!(
+                        "Surface volume TIFFs successfully rendered to {}",
+                        out_dir.display()
+                    );
                 }
                 if let Some(ref zarr_dir) = zarr_output {
-                    SurfaceVolumeGenerator::render_mesh_to_zarr(&vol, &surface_mesh, &config, zarr_dir)?;
-                    println!("Surface volume chunked Zarr successfully written to {}", zarr_dir.display());
+                    SurfaceVolumeGenerator::render_mesh_to_zarr(
+                        &vol,
+                        &surface_mesh,
+                        &config,
+                        zarr_dir,
+                    )?;
+                    println!(
+                        "Surface volume chunked Zarr successfully written to {}",
+                        zarr_dir.display()
+                    );
                 }
             }
         }
@@ -240,7 +263,10 @@ fn main() -> Result<()> {
             let (cx, cy, cz) = meta.chunk_sizes();
             println!("- Zarr Format: {}", meta.zarr_format);
             println!("- Dimensions (X, Y, Z): ({}, {}, {}) voxels", dx, dy, dz);
-            println!("- Chunk Dimensions (CX, CY, CZ): ({}, {}, {}) voxels", cx, cy, cz);
+            println!(
+                "- Chunk Dimensions (CX, CY, CZ): ({}, {}, {}) voxels",
+                cx, cy, cz
+            );
             println!("- Data Type: {}", meta.dtype);
             println!("- Remote Source: {}", vol.is_remote);
         }
@@ -295,8 +321,13 @@ fn main() -> Result<()> {
 
             let params = SpiralParameters::new(center_x, center_y, a, b);
             let deformation = if let Some(ref def_path) = deformation_field {
-                println!("Loading non-rigid deformation field: {}", def_path.display());
-                Some(volumen_geom::DeformationField::load_auto(def_path, theta_min, theta_max, z_min, z_max)?)
+                println!(
+                    "Loading non-rigid deformation field: {}",
+                    def_path.display()
+                );
+                Some(volumen_geom::DeformationField::load_auto(
+                    def_path, theta_min, theta_max, z_min, z_max,
+                )?)
             } else {
                 None
             };
@@ -326,8 +357,13 @@ fn main() -> Result<()> {
                     "Unrolling spiral manifold [turns: {:.2} -> {:.2}, z: {:.1} -> {:.1}] to TIFFs in {}...",
                     turns_start, turns_end, z_min, z_max, out_dir.display()
                 );
-                SurfaceVolumeGenerator::render_deformed_spiral_to_dir(&vol, &manifold, &config, out_dir)?;
-                println!("Spiral surface volume TIFFs successfully saved to {}", out_dir.display());
+                SurfaceVolumeGenerator::render_deformed_spiral_to_dir(
+                    &vol, &manifold, &config, out_dir,
+                )?;
+                println!(
+                    "Spiral surface volume TIFFs successfully saved to {}",
+                    out_dir.display()
+                );
             }
 
             if let Some(ref zarr_dir) = zarr_output {
@@ -335,13 +371,16 @@ fn main() -> Result<()> {
                     "Unrolling spiral manifold directly to chunked Zarr at {}...",
                     zarr_dir.display()
                 );
-                SurfaceVolumeGenerator::render_deformed_spiral_to_zarr(&vol, &manifold, &config, zarr_dir)?;
-                println!("Spiral surface volume chunked Zarr successfully saved to {}", zarr_dir.display());
+                SurfaceVolumeGenerator::render_deformed_spiral_to_zarr(
+                    &vol, &manifold, &config, zarr_dir,
+                )?;
+                println!(
+                    "Spiral surface volume chunked Zarr successfully saved to {}",
+                    zarr_dir.display()
+                );
             }
         }
-
     }
 
     Ok(())
 }
-

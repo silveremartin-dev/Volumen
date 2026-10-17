@@ -33,7 +33,7 @@ pub struct Face {
 }
 
 /// Surface Mesh representing an unrolled or 3D segmented papyrus sheet.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SurfaceMesh {
     pub vertices: Vec<Point3D>,
     pub uvs: Vec<UV>,
@@ -72,19 +72,31 @@ impl SurfaceMesh {
                 "v" => {
                     let x: f64 = parts
                         .next()
-                        .ok_or_else(|| VolumenError::MeshParse(format!("Line {}: missing x", line_idx)))?
+                        .ok_or_else(|| {
+                            VolumenError::MeshParse(format!("Line {}: missing x", line_idx))
+                        })?
                         .parse()
-                        .map_err(|e| VolumenError::MeshParse(format!("Line {}: {}", line_idx, e)))?;
+                        .map_err(|e| {
+                            VolumenError::MeshParse(format!("Line {}: {}", line_idx, e))
+                        })?;
                     let y: f64 = parts
                         .next()
-                        .ok_or_else(|| VolumenError::MeshParse(format!("Line {}: missing y", line_idx)))?
+                        .ok_or_else(|| {
+                            VolumenError::MeshParse(format!("Line {}: missing y", line_idx))
+                        })?
                         .parse()
-                        .map_err(|e| VolumenError::MeshParse(format!("Line {}: {}", line_idx, e)))?;
+                        .map_err(|e| {
+                            VolumenError::MeshParse(format!("Line {}: {}", line_idx, e))
+                        })?;
                     let z: f64 = parts
                         .next()
-                        .ok_or_else(|| VolumenError::MeshParse(format!("Line {}: missing z", line_idx)))?
+                        .ok_or_else(|| {
+                            VolumenError::MeshParse(format!("Line {}: missing z", line_idx))
+                        })?
                         .parse()
-                        .map_err(|e| VolumenError::MeshParse(format!("Line {}: {}", line_idx, e)))?;
+                        .map_err(|e| {
+                            VolumenError::MeshParse(format!("Line {}: {}", line_idx, e))
+                        })?;
                     mesh.vertices.push(Point3D::new(x, y, z));
                 }
                 "vt" => {

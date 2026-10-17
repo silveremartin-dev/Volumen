@@ -16,3 +16,4 @@ volumen-geom.workspace = true
 volumen-zarr.workspace = true
 volumen-sampler.workspace = true
 pyo3.workspace = true
+numpy.workspace = true
