@@ -84,25 +84,9 @@ The document was rolled into a 3D volumetric cylinder ($160 \times 220 \times 22
 
 The unrolled composite images demonstrate complete restoration of the carbon ink text from inside the 3D spiral volume:
 
-```
-+-----------------------------------------------------------------------------------------+
-| Panel 1: Ground Truth Flat Papyrus                                                      |
-|   "HERCULANEUM - SCROLL PRIZE"                                                          |
-|   "VOLUMEN SOTA SPIRAL UNROLL"                                                          |
-|   "ANALYTICAL MANIFOLD PROJECTION"                                                      |
-|   "ALPHA BETA GAMMA DELTA: ABGDEZHIKLM"                                                 |
-|   "FIDUCIAL: ||||||| 1234567890 |||||||"                                                |
-+-----------------------------------------------------------------------------------------+
-| Panel 2: SOTA Spiral-Fitting (Discrete Quad Lattice)                                    |
-|   Text successfully unrolled, with minor chordal discretization at high-curvature core. |
-+-----------------------------------------------------------------------------------------+
-| Panel 3: Volumen Analytical Continuous Spiral Unrolling                                 |
-|   Text unrolled with zero sagitta error, sharp character glyphs, and uniform contrast. |
-+-----------------------------------------------------------------------------------------+
-| Panel 4: Absolute Error Heatmap                                                         |
-|   Confirms mathematical concordance between analytical and discrete asymptotic limits. |
-+-----------------------------------------------------------------------------------------+
-```
+![Tool 2 Spiral Unrolling Comparison](assets/04_side_by_side_comparison.png)
+
+*4-Panel Comparative Analysis: (Top-Left) Ground Truth flat papyrus with synthetic Greek text and fiducials; (Top-Right) SOTA Discrete Spiral Fitting; (Bottom-Left) Volumen Continuous Analytical Spiral Unrolling; (Bottom-Right) Absolute error difference heatmap.*
 
 ---
 

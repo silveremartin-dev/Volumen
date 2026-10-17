@@ -62,7 +62,11 @@ Rather than relying solely on synthetic mathematical spiral testbeds, this bench
 
 ## 4. Visual Verification Analysis
 
-The visual comparison panel (`00_real_scroll1_comparison_panel.png`) confirms:
+The visual comparison panel confirms exact spatial and texture fidelity on authentic synchrotron data:
+
+![Real Scroll 1 Comparison Panel](assets/00_real_scroll1_comparison_panel.png)
+
+*Figure 1: Side-by-side comparison on real Herculaneum Scroll 1 (ESRF 54keV_7.91um). (Left) Official Volume Cartographer `vc_render` Layer 32; (Middle) Volumen true barycentric ray-caster; (Right) 2x magnified difference residual map.*
 1. **Identical Sheet Silhouette**: The irregular outer contour of the segmented papyrus sheet matches pixel-for-pixel between the official `vc_render` output and `Volumen`.
 2. **True Biological Texture**:
    - The horizontal vascular fiber striations of the carbonized papyrus reed are sharply reproduced.

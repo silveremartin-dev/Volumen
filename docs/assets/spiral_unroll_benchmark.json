@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-10-16T20:53:32Z",
+  "scroll_dimensions": [
+    160,
+    220,
+    220
+  ],
+  "unrolled_dimensions": [
+    120,
+    480
+  ],
+  "sota_discrete": {
+    "mae": 3424.856689453125,
+    "psnr_db": 21.25308827995567,
+    "chordal_sagitta_voxels": 0.003695286580792581,
+    "normal_angular_error_deg": 0.004209132792167963,
+    "throughput_voxels_sec": 11585.811953531756,
+    "pipeline_stages": 5
+  },
+  "volumen_analytical": {
+    "mae": 3424.856689453125,
+    "psnr_db": 21.25308827995567,
+    "chordal_sagitta_voxels": 0.0,
+    "normal_angular_error_deg": 0.0,
+    "throughput_voxels_sec": 13790.942404955338,
+    "pipeline_stages": 1
+  }
+}

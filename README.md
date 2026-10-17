@@ -19,10 +19,11 @@
 - [6. Mathematical & Physical Formulations](#6-mathematical--physical-formulations)
 - [7. Benchmark & Verification Protocol (Differential Testing)](#7-benchmark--verification-protocol-differential-testing)
 - [8. Installation & Quickstart](#8-installation--quickstart)
-- [9. CLI Reference (Drop-In Replacement for `vc_render`)](#9-cli-reference-drop-in-replacement-for-vc_render)
-- [10. Project Structure](#10-project-structure)
-- [11. Testing Philosophy: Strict Invariants & Zero Hallucination](#11-testing-philosophy-strict-invariants--zero-hallucination)
-- [12. License](#12-license)
+- [9. CLI Reference (`volumen` & `vc_render`)](#9-cli-reference-volumen--vc_render)
+- [10. Python API & Zero-Copy PyTorch In-Memory Streaming](#10-python-api--zero-copy-pytorch-in-memory-streaming)
+- [11. Project Structure](#11-project-structure)
+- [12. Testing Philosophy: Strict Invariants & Zero Hallucination](#12-testing-philosophy-strict-invariants--zero-hallucination)
+- [13. License](#13-license)
 
 ---
 
@@ -214,9 +215,17 @@ The table below contrasts the legacy reference stack ([`ScrollPrize/villa`](http
 
 *See full report and visual artifacts in [Technical Report 06: Spiral Unrolling Benchmark](docs/06_spiral_unrolling_benchmark.md).*
 
+![Tool 2 Spiral Unrolling Comparison](docs/assets/04_side_by_side_comparison.png)
+
+*Figure: End-to-end unrolling of synthetic carbon ink text from inside a 3D spiral volume. Ground truth flat papyrus (Top-Left), SOTA discrete quad lattice unrolling (Top-Right), Volumen exact analytical manifold projection (Bottom-Left), and difference residual heatmap (Bottom-Right).*
+
 ### Empirical Validation on Real Herculaneum Papyrus (Scroll 1 / PHerc.Paris 4)
 
 *Differential audit against the official Volume Cartographer `vc_render` on authentic European Synchrotron Radiation Facility (ESRF) tomography (`scripts/benchmark_real_scroll1_segment.py`):*
+
+![Real Scroll 1 Comparison](docs/assets/00_real_scroll1_comparison_panel.png)
+
+*Figure: Side-by-side comparison on authentic Herculaneum Scroll 1 synchrotron scan (`54keV_7.91um_Scroll1A`). (Left) Official Volume Cartographer `vc_render` reference; (Middle) Volumen true barycentric ray-caster; (Right) 2x magnified difference residual map proving 0.61% bit-level concordance.*
 
 | Evaluation Metric | Official `vc_render` (Reference) | `Volumen` Engine | Concordance Status |
 | :--- | :---: | :---: | :---: |
@@ -236,63 +245,72 @@ The table below contrasts the legacy reference stack ([`ScrollPrize/villa`](http
 
 ### Prerequisites
 - [Rust toolchain](https://rustup.rs/) (version 1.80+).
+- Python 3.8+ (optional, for `volumen-py` PyTorch bindings).
 
-### Building from Source
+### Building the Rust Binaries (`volumen` & `vc_render`)
 ```bash
 # Clone the repository
 git clone https://github.com/silveremartin-dev/Volumen.git
 cd Volumen
 
-# Build with release optimizations
+# Build both binaries with release optimizations
 cargo build --release --workspace
 
-# Run complete workspace test suite
-cargo test --workspace
+# The binaries are ready at:
+# - target/release/volumen   (Main multi-command engine)
+# - target/release/vc_render (Drop-in binary replacement for legacy C++ vc_render)
 ```
 
-The compiled binary will be located at `target/release/volumen`.
+### Installing the Python Package (`volumen`)
+```bash
+# Direct install via pip and maturin
+pip install .
+
+# Or build wheel
+maturin build --release
+```
 
 ---
 
-## 9. CLI Reference (Drop-In Replacement for `vc_render`)
+## 9. CLI Reference
 
-### Render a 2.5D Surface Volume (Exact `vc_render_tifxyz` Drop-In)
-Extract a 64-layer surface stack from an OME-Zarr scroll volume and a segmented `.obj` or `tifxyz` mesh. Accepts both native Volumen and official Volume Cartographer CLI argument flags interchangeably:
+### 1. `vc_render` Binary (Direct Drop-In for Khartes & Volume Cartographer)
+A standalone drop-in binary target compiled as `vc_render`. You can place it directly in `/usr/local/bin` or your `$PATH` to replace the legacy C++ binary without modifying any existing pipeline scripts:
 ```bash
-# Standard Volumen syntax:
+# Standard Volume Cartographer syntax:
+vc_render -s segment.obj -v scroll.zarr -o layers/ -n 64 --step 1.0
+
+# With automatic papyrus sheet centering:
+vc_render -s segment.obj -v scroll.zarr -o layers/ --auto-center
+```
+
+### 2. `volumen render` (Virtual Unwrapping Core)
+Extract a 64-layer surface stack from an OME-Zarr scroll volume and a segmented `.obj` or `tifxyz` mesh. Supports both local storage and direct Cloud S3 streaming:
+```bash
+# Standard local render directly to TIFF slices:
 volumen render \
   --volume path/to/scroll.zarr \
   --mesh path/to/segment.obj \
   --output path/to/surface_volume/ \
   --layers 64 \
-  --step 1.0 \
+  --auto-center
+
+# Direct Cloud S3 streaming (no 10 TB download required):
+volumen render \
+  --volume "s3://vesuvius-challenge-open-data/Scroll1/54keV_7.91um_Scroll1A.zarr/0" \
+  --mesh path/to/segment.obj \
+  --output path/to/surface_volume/ \
   --max-cache-gb 16
 
-# 100% Drop-in syntax for ScrollPrize/villa (e.g. inside render_ink.py):
+# Render directly into chunked OME-Zarr:
 volumen render \
   --volume path/to/scroll.zarr \
-  --segmentation path/to/segment_tifxyz \
-  --tif-output path/to/surface_volume/ \
-  --num-slices 64 \
-  --slice-step 1.0 \
-  --scale 1.0 \
-  --cache-gb 16
+  --mesh path/to/segment.obj \
+  --zarr-output path/to/surface_volume.zarr
 ```
 
-### Inspect Volumetric Metadata
-Print chunking, resolution, and multiscale pyramid details of a `.zarr` volume:
-```bash
-volumen inspect --volume path/to/scroll.zarr
-```
-
-### Verify Mesh Integrity
-Check for non-manifold edges, invalid UV coordinates, and degenerate triangles:
-```bash
-volumen verify --mesh path/to/segment.obj
-```
-
-### Unroll Spiral Manifold (with Optional Neural Non-Rigid Flow Field)
-Continuously unroll an Archimedean spiral manifold directly from raw micro-CT volumetric data. Supports injecting a non-rigid displacement flow field $\mathbf{D}(\theta, z)$ produced by deep learning models (e.g., `fit_spiral` / U-Nets) to account for authentic scroll compression and pyrolyzed flattening:
+### 3. `volumen unroll-spiral` (Tool 2: Continuous Spiral Unrolling)
+Continuously unroll an Archimedean spiral manifold directly from raw micro-CT volumetric data. Supports injecting a non-rigid displacement flow field $\mathbf{D}(\theta, z)$ produced by deep learning models (e.g., `fit_spiral` / U-Nets) to account for authentic scroll compression:
 ```bash
 volumen unroll-spiral \
   --volume path/to/scroll.zarr \
@@ -312,10 +330,58 @@ volumen unroll-spiral \
   --flow-field path/to/deformation_field.json
 ```
 
+### 4. `volumen inspect` & `volumen verify`
+```bash
+# Print chunking, resolution, and multiscale pyramid details:
+volumen inspect --volume path/to/scroll.zarr
+
+# Check for non-manifold edges, invalid UV coordinates, and degenerate triangles:
+volumen verify --mesh path/to/segment.obj
+```
 
 ---
 
-## 10. Project Structure
+## 10. Python API & Zero-Copy PyTorch In-Memory Streaming
+
+`volumen` provides zero-copy Python bindings via PyO3, allowing deep learning models (e.g. 3D U-Nets for ink detection) to extract surface tensors directly into RAM as 3D NumPy arrays without intermediate disk I/O bottlenecks:
+
+```python
+import volumen
+import torch
+import numpy as np
+
+# 1. Zero-copy in-memory rendering of 64-layer tensor (shape: [64, height, width])
+slices_np = volumen.render_to_numpy(
+    volume="path/to/scroll.zarr",           # or "s3://vesuvius-challenge-open-data/..."
+    mesh="path/to/segment.obj",             # or path to tifxyz directory
+    num_layers=64,
+    step_size=1.0,
+    auto_center=True,                       # Automatically centers on papyrus density
+    max_cache_gb=8,
+)
+
+# 2. Convert directly to PyTorch tensor for ink inference
+tensor = torch.from_numpy(slices_np).float() / 65535.0
+print(f"Loaded tensor shape: {tensor.shape}, dtype: {tensor.dtype}")
+
+# 3. Unroll continuous spiral directly to NumPy
+spiral_np = volumen.unroll_spiral_to_numpy(
+    volume="path/to/scroll.zarr",
+    center_x=3500.0,
+    center_y=3200.0,
+    a=250.0,
+    b=12.5,
+    turns_start=1.0,
+    turns_end=3.0,
+    z_min=100.0,
+    z_max=300.0,
+    num_layers=32,
+)
+```
+
+---
+
+## 11. Project Structure
 
 ```
 Volumen/
@@ -341,7 +407,7 @@ Volumen/
 
 ---
 
-## 11. Testing Philosophy: Strict Invariants & Zero Hallucination
+## 12. Testing Philosophy: Strict Invariants & Zero Hallucination
 
 All algorithms within `Volumen` are subjected to invariant testing:
 - **Interpolation Accuracy**: Trilinear interpolation on 3D linear gradients must match analytical solutions to within machine precision ($10^{-12}$).
@@ -350,7 +416,7 @@ All algorithms within `Volumen` are subjected to invariant testing:
 
 ---
 
-## 12. License
+## 13. License
 
 Dual-licensed under either:
 - Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
