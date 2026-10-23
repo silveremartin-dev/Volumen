@@ -6,7 +6,10 @@
 
 ## 1. Executive Summary
 
-This report establishes the first empirical validation of the **`Volumen`** virtual unwrapping engine on **authentic, physical Herculaneum papyrus micro-CT data** downloaded directly from the official Vesuvius Challenge open data repository (`dl.ash2txt.org`).
+This report establishes the first empirical validation of the **`Volumen`** virtual unwrapping algorithm on **authentic, physical Herculaneum papyrus micro-CT data** downloaded directly from the official Vesuvius Challenge open data repository (`dl.ash2txt.org`).
+
+> [!NOTE]
+> **Implementation Scope**: This differential evaluation was executed via the Python sampling prototype (`scripts/benchmark_real_scroll1_segment.py`) validating the mathematical ray-casting formulation against official Volume Cartographer reference layers prior to compiled Rust end-to-end benchmarking. No speedup claims are asserted.
 
 Rather than relying solely on synthetic mathematical spiral testbeds, this benchmark evaluates:
 - **Real Volumetric CT Scan**: `54keV_7.91um_Scroll1A.zarr` (European Synchrotron Radiation Facility, 7.91 µm resolution, Blosc-Zstandard compression).

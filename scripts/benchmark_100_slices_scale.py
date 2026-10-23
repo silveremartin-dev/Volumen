@@ -2,15 +2,10 @@
 """
 benchmark_100_slices_scale.py
 -----------------------------
-High-Scale Benchmark executing 100+ volume surface slices across 2 random datasets:
-- Dataset Alpha: Seed 1337 (128x128x128 volume, 64 layers extracted)
-- Dataset Beta:  Seed 9999 (128x128x128 volume, 64 layers extracted)
-Total: 128 slices (> 500,000 ray queries) evaluated against reference math.
-
-Metrics recorded:
-1. Exact Numerical Fidelity (MAE, PSNR)
-2. Wall-clock execution time & Throughput (rays/second)
-3. Memory peak stability (Zero leak)
+NOTE: This script is an offline Python prototype verifying mathematical boundary
+clamping across synthetic array slices. It compares pure-Python trilinear sampling
+against itself and DOES NOT invoke the compiled Rust engine (`volumen-sampler`).
+Do not use this script for empirical throughput or speedup claims.
 """
 
 import json

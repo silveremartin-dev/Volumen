@@ -2,6 +2,11 @@
 """
 benchmark_spiral_unrolling_sota.py
 -----------------------------------
+NOTE: This script is an experimental Python prototype simulating unrolling on an
+idealized, perfectly Archimedean synthetic spiral. Real Herculaneum scrolls are
+severely crushed, warped, and fractured. This simulation does not measure compiled
+Rust performance on physical micro-CT scans.
+
 Differential benchmark comparing:
 1. SOTA Discrete Spiral Fitting (ScrollPrize/villa approach: tifxyz regular quad lattice + finite-difference normals)
 2. Volumen Continuous Analytical Spiral Unrolling (exact differential normal field + zero chordal error)

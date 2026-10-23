@@ -4,7 +4,7 @@
 
 To be accepted into the official `ScrollPrize` ecosystem (or integrated into the `villa` monorepo), `Volumen` must prove beyond any doubt that:
 1. **Mathematical Equivalence**: The 2.5D surface volumes produced by `Volumen` are pixel-identical (or within strict floating-point epsilon) to the ground truth produced by the official reference implementation (`vc_render` from `Volume Cartographer`).
-2. **Deterministic Speedup**: Wall-clock render time drops by **10x to 50x**.
+2. **Performance Characterization**: Wall-clock render time and throughput measured rigorously against `vc_render` under identical hardware and cache conditions without unsubstantiated speedup claims.
 3. **Bounded Memory Consumption**: Memory footprint stays strictly bounded below the configured `--max-cache-gb` threshold without leaking memory or causing paging thrashing.
 
 ---

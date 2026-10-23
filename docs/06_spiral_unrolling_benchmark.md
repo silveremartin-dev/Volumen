@@ -3,6 +3,9 @@
 **Volumen: Virtual Unwrapping & Continuous Manifold Unrolling for the Vesuvius Challenge**  
 *Audited Benchmark: SOTA Discrete Spiral-Fitting vs. Volumen Continuous Analytical Spiral Unrolling*
 
+> [!NOTE]
+> **Synthetic Prototype Sandbox Caveat**: This benchmark is an algorithmic comparison performed on an idealized, mathematically generated Archimedean spiral volume in Python (`scripts/benchmark_spiral_unrolling_sota.py`). Real Herculaneum scrolls are severely crushed, folded, and fractured. This benchmark serves as a conceptual validation of analytical manifold unrolling and does not represent compiled Rust engine speed on authentic physical micro-CT scans.
+
 ---
 
 ## 1. System Overview: The Two Foundational Tools of Volumen
