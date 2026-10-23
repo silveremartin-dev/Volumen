@@ -4,6 +4,7 @@
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
 [![Vesuvius Challenge](https://img.shields.io/badge/community-Vesuvius%20Challenge-red.svg)](https://scrollprize.org)
 [![ScrollPrize/villa](https://img.shields.io/badge/monorepo-ScrollPrize%2Fvilla%20compatible-brightgreen.svg)](https://github.com/ScrollPrize/villa)
+[![Tests: 26 Passing](https://img.shields.io/badge/tests-26%20passed-brightgreen.svg)]()
 [![Compute: Rayon & SIMD](https://img.shields.io/badge/compute-Rayon%20%7C%20SIMD-green.svg)]()
 
 > **A modern, blazingly fast, memory-safe Rust virtual unwrapping engine, out-of-core OME-Zarr volumetric streaming reader, and topological surface reconstructor for the Herculaneum papyri.**

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use volumen_geom::{NormalEstimator, SurfaceMesh, TifxyzMesh};
-use volumen_sampler::{DifferentialReport, SurfaceVolumeConfig, SurfaceVolumeGenerator};
+use volumen_sampler::{SurfaceVolumeConfig, SurfaceVolumeGenerator};
 use volumen_zarr::ZarrVolume;
 
 /// Multi-sample differential benchmark runner.
@@ -49,6 +49,7 @@ fn test_reproducible_benchmark_across_random_datasets() {
             height: 64,
             affine: None,
             flip_normals: false,
+            auto_center: false,
         };
 
 

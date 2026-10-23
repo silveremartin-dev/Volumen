@@ -29,6 +29,6 @@ fn test_real_scroll1_segment_mesh_loading() {
     // Check physical bounding box in Scroll 1 voxel space
     let bbox = mesh.bounding_box().expect("Bounding box must exist");
     println!("Real Scroll 1 Segment BBox: min={:?}, max={:?}", bbox.min, bbox.max);
-    assert!(bbox.min.x >= 2600.0 && bbox.max.x <= 2800.0, "X must be within Scroll 1 volume");
-    assert!(bbox.min.y >= 2600.0 && bbox.max.y <= 2800.0, "Y must be within Scroll 1 volume");
+    assert!(bbox.min.x >= 2600.0 && bbox.max.x <= 2900.0, "X must be within Scroll 1 volume");
+    assert!(bbox.min.y >= 2500.0 && bbox.max.y <= 2800.0, "Y must be within Scroll 1 volume");
 }

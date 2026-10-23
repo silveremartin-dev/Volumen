@@ -15,9 +15,11 @@ impl ChunkDecompressor {
         let decompressed_bytes = match compressor_id {
             None | Some("none") => raw_bytes.to_vec(),
             Some("gzip") | Some("zlib") => {
-                let mut decoder = GzDecoder::new(raw_bytes);
+                let decoder = GzDecoder::new(raw_bytes);
+                let max_allowed = (expected_elements * 2).saturating_mul(4).max(64 * 1024 * 1024);
                 let mut buffer = Vec::with_capacity(expected_elements * 2);
                 decoder
+                    .take(max_allowed as u64)
                     .read_to_end(&mut buffer)
                     .map_err(|e| VolumenError::Zarr(format!("Gzip decompression failed: {}", e)))?;
                 buffer

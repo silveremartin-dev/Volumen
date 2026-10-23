@@ -44,6 +44,7 @@ fn test_end_to_end_surface_volume_pipeline() {
         height: 32,
         affine: None,
         flip_normals: false,
+        auto_center: false,
     };
 
 

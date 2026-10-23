@@ -48,8 +48,11 @@ impl RemoteZarrFetcher {
             .arg("-s") // Silent
             .arg("-L") // Follow redirects
             .arg("-f") // Fail silently on HTTP 4xx/5xx
+            .arg("--proto")
+            .arg("=https,http")
             .arg("--retry") // Retry on network glitch
             .arg("2")
+            .arg("--") // End of options flag to prevent argument injection
             .arg(url)
             .output();
 

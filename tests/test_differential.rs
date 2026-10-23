@@ -44,6 +44,7 @@ fn test_differential_benchmark_invariant_and_psnr() {
         height: 64,
         affine: None,
         flip_normals: false,
+        auto_center: false,
     };
 
 

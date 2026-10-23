@@ -101,7 +101,7 @@ fn test_spiral_surface_volume_render_end_to_end() {
                             // Gaussian ridge around residual = 0 (spiral surface)
                             let sigma = 1.5;
                             let intensity = (50000.0 * (-0.5 * (residual / sigma).powi(2)).exp()) as u16;
-                            chunk.set(x, y, z, intensity);
+                            chunk.set(x as usize, y as usize, z as usize, intensity);
                         }
                     }
                 }

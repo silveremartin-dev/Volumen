@@ -6,13 +6,8 @@ use volumen_zarr::{Chunk3D, ChunkKey, ZarrVolume};
 fn test_lru_cache_bounded_memory_pressure() {
     // 1. Create a synthetic volume with 16 chunks (4x4x1)
     let chunk_size = 64u64;
-    let vol = ZarrVolume::new_synthetic(256, 256, 64, chunk_size, chunk_size, chunk_size);
-    
-    // Explicitly constrain cache capacity to only 4 chunks (simulating --cache-gb 0.01)
-    let constrained_vol = ZarrVolume {
-        max_cached_chunks: 4,
-        ..vol
-    };
+    let mut constrained_vol = ZarrVolume::new_synthetic(256, 256, 64, chunk_size, chunk_size, chunk_size);
+    constrained_vol.max_cached_chunks = 4;
 
     // Populate each of the 16 chunks with distinct gradient data
     for cz in 0..1 {
